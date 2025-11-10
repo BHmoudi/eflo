@@ -1,0 +1,167 @@
+# =====================================================
+# Config Server - Base Configuration
+# =====================================================
+# Centralized configuration management for Eflo Microservices
+# =====================================================
+
+server:
+  port: 8888
+
+spring:
+  application:
+    name: config-server
+
+  # =====================================================
+  # Cloud Config Server Configuration
+  # =====================================================
+  cloud:
+    config:
+      server:
+        # Git Repository Configuration
+        git:
+          # Use local file system for development
+          # In production, use remote Git repository URL
+          uri: file://${user.home}/eflo-new-ai/files/config-server/config-repo
+
+          # For remote Git repository, use this format:
+          # uri: https://github.com/your-org/config-repo
+          # username: ${GIT_USERNAME}
+          # password: ${GIT_PASSWORD}
+
+          default-label: main
+          search-paths: .
+          clone-on-start: true
+          timeout: 10
+          force-pull: true
+
+          # Refresh interval for Git repository (in seconds)
+          refresh-rate: 10
+
+        # Encryption Configuration
+        encrypt:
+          enabled: true
+
+        # Health Check Configuration
+        health:
+          enabled: true
+
+        # Default Configuration
+        default-application-name: application
+        default-profile: default
+
+      # Spring Cloud Bus Configuration for Hot Refresh
+      bus:
+        enabled: true
+        refresh:
+          enabled: true
+
+  # =====================================================
+  # Kafka Configuration (for Spring Cloud Bus)
+  # =====================================================
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: config-server-group
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+
+# =====================================================
+# Encryption Key Configuration
+# =====================================================
+# For development: use a symmetric key
+# For production: use asymmetric keys (RSA) stored in a keystore
+encrypt:
+  key: ${CONFIG_SERVER_ENCRYPTION_KEY:MySecretEncryptionKey123456789012}
+
+# =====================================================
+# Eureka Client Configuration
+# =====================================================
+eureka:
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+    registry-fetch-interval-seconds: 30
+
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${server.port}
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+    metadata-map:
+      environment: ${SPRING_PROFILES_ACTIVE:dev}
+      version: 1.0.0
+
+# =====================================================
+# Spring Boot Actuator Configuration
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose all endpoints including encrypt, decrypt, and bus-refresh
+        include: health,info,metrics,prometheus,refresh,bus-refresh,encrypt,decrypt,env
+      base-path: /actuator
+
+  endpoint:
+    health:
+      show-details: always
+      enabled: true
+
+    info:
+      enabled: true
+
+    metrics:
+      enabled: true
+
+    prometheus:
+      enabled: true
+
+    # Refresh endpoint for manual configuration refresh
+    refresh:
+      enabled: true
+
+    # Bus-refresh endpoint for triggering global refresh
+    bus-refresh:
+      enabled: true
+
+    # Encryption endpoints
+    encrypt:
+      enabled: true
+
+    decrypt:
+      enabled: true
+
+  # Metrics configuration
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+  # Health check configuration
+  health:
+    defaults:
+      enabled: true
+
+# =====================================================
+# Logging Configuration
+# =====================================================
+logging:
+  level:
+    root: INFO
+    com.eflo: DEBUG
+    org.springframework.cloud.config: DEBUG
+    org.springframework.cloud.bus: INFO
+    org.springframework.kafka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

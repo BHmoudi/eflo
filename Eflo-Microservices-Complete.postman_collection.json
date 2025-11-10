@@ -1,0 +1,1783 @@
+{
+  "info": {
+    "name": "Eflo Microservices Complete Collection",
+    "description": "Complete Postman collection for testing all Eflo microservices with Keycloak authentication",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "eflo-microservices"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{access_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "variable": [
+    {
+      "key": "base_url_gateway",
+      "value": "http://localhost:8080",
+      "type": "string"
+    },
+    {
+      "key": "keycloak_url",
+      "value": "http://localhost:8180",
+      "type": "string"
+    },
+    {
+      "key": "keycloak_realm",
+      "value": "eflo",
+      "type": "string"
+    },
+    {
+      "key": "username",
+      "value": "john.doe@eflo.com",
+      "type": "string"
+    },
+    {
+      "key": "password",
+      "value": "test",
+      "type": "string"
+    },
+    {
+      "key": "client_id",
+      "value": "eflo-web-app",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "item": [
+    {
+      "name": "Authentication",
+      "item": [
+        {
+          "name": "Login - Get JWT Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var jsonData = pm.response.json();",
+                  "    pm.collectionVariables.set(\"access_token\", jsonData.access_token);",
+                  "    console.log(\"Access token saved:\", jsonData.access_token);",
+                  "} else {",
+                  "    console.log(\"Login failed:\", pm.response.text());",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-www-form-urlencoded"
+              }
+            ],
+            "body": {
+              "mode": "urlencoded",
+              "urlencoded": [
+                {
+                  "key": "grant_type",
+                  "value": "password",
+                  "type": "text"
+                },
+                {
+                  "key": "client_id",
+                  "value": "{{client_id}}",
+                  "type": "text"
+                },
+                {
+                  "key": "username",
+                  "value": "{{username}}",
+                  "type": "text"
+                },
+                {
+                  "key": "password",
+                  "value": "{{password}}",
+                  "type": "text"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{keycloak_url}}/realms/{{keycloak_realm}}/protocol/openid-connect/token",
+              "host": [
+                "{{keycloak_url}}"
+              ],
+              "path": [
+                "realms",
+                "{{keycloak_realm}}",
+                "protocol",
+                "openid-connect",
+                "token"
+              ]
+            },
+            "description": "Authenticate with Keycloak using Direct Access Grant (Resource Owner Password Credentials) and retrieve JWT access token"
+          },
+          "response": []
+        }
+      ],
+      "description": "Keycloak authentication endpoints"
+    },
+    {
+      "name": "Order Service",
+      "item": [
+        {
+          "name": "Get All Orders",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Retrieve all orders from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"CUST-001\",\n  \"customerName\": \"John Doe\",\n  \"orderDate\": \"2025-10-15T10:00:00Z\",\n  \"status\": \"DRAFT\",\n  \"totalAmount\": 10000.00,\n  \"currency\": \"USD\",\n  \"items\": [\n    {\n      \"productId\": \"PROD-001\",\n      \"productName\": \"Product A\",\n      \"quantity\": 5,\n      \"unitPrice\": 1000.00,\n      \"totalPrice\": 5000.00\n    },\n    {\n      \"productId\": \"PROD-002\",\n      \"productName\": \"Product B\",\n      \"quantity\": 10,\n      \"unitPrice\": 500.00,\n      \"totalPrice\": 5000.00\n    }\n  ],\n  \"billingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"shippingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"notes\": \"Urgent order - please prioritize\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders"
+              ]
+            },
+            "description": "Create a new order in the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Order by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/:orderId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Retrieve a specific order by its ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"customerId\": \"CUST-001\",\n  \"customerName\": \"John Doe\",\n  \"orderDate\": \"2025-10-15T10:00:00Z\",\n  \"status\": \"DRAFT\",\n  \"totalAmount\": 12000.00,\n  \"currency\": \"USD\",\n  \"items\": [\n    {\n      \"productId\": \"PROD-001\",\n      \"productName\": \"Product A\",\n      \"quantity\": 6,\n      \"unitPrice\": 1000.00,\n      \"totalPrice\": 6000.00\n    },\n    {\n      \"productId\": \"PROD-002\",\n      \"productName\": \"Product B\",\n      \"quantity\": 12,\n      \"unitPrice\": 500.00,\n      \"totalPrice\": 6000.00\n    }\n  ],\n  \"billingAddress\": {\n    \"street\": \"123 Main St\",\n    \"city\": \"New York\",\n    \"state\": \"NY\",\n    \"postalCode\": \"10001\",\n    \"country\": \"USA\"\n  },\n  \"shippingAddress\": {\n    \"street\": \"456 Oak Ave\",\n    \"city\": \"Brooklyn\",\n    \"state\": \"NY\",\n    \"postalCode\": \"11201\",\n    \"country\": \"USA\"\n  },\n  \"notes\": \"Updated shipping address\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/:orderId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Update an existing order"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Order Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"SUBMITTED\",\n  \"statusReason\": \"Order submitted for approval\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/:orderId/status",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":orderId",
+                "status"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Update the status of an order"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Order",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/:orderId/validate",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":orderId",
+                "validate"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Validate order data and business rules"
+          },
+          "response": []
+        },
+        {
+          "name": "Recalculate Pricing",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/:orderId/recalculate",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":orderId",
+                "recalculate"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Recalculate order pricing based on current rules"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Order",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/:orderId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Delete an order from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Orders by Status",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/status/:status",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "status",
+                ":status"
+              ],
+              "variable": [
+                {
+                  "key": "status",
+                  "value": "SUBMITTED",
+                  "description": "Order status (DRAFT, SUBMITTED, APPROVED, REJECTED, COMPLETED, CANCELLED)"
+                }
+              ]
+            },
+            "description": "Retrieve all orders with a specific status"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Orders by Customer",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/orders/customer/:customerId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "orders",
+                "customer",
+                ":customerId"
+              ],
+              "variable": [
+                {
+                  "key": "customerId",
+                  "value": "CUST-001",
+                  "description": "Customer ID"
+                }
+              ]
+            },
+            "description": "Retrieve all orders for a specific customer"
+          },
+          "response": []
+        }
+      ],
+      "description": "Order management endpoints"
+    },
+    {
+      "name": "Workflow Service",
+      "item": [
+        {
+          "name": "Get All Workflow Processes",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/processes",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "processes"
+              ]
+            },
+            "description": "Retrieve all workflow process definitions"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Workflow Process",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"ORDER_APPROVAL\",\n  \"name\": \"Order Approval Workflow\",\n  \"description\": \"Multi-level approval workflow for orders\",\n  \"version\": \"1.0\",\n  \"states\": [\n    {\n      \"code\": \"DRAFT\",\n      \"name\": \"Draft\",\n      \"type\": \"START\",\n      \"isInitial\": true\n    },\n    {\n      \"code\": \"PENDING_MANAGER\",\n      \"name\": \"Pending Manager Approval\",\n      \"type\": \"APPROVAL\"\n    },\n    {\n      \"code\": \"PENDING_DIRECTOR\",\n      \"name\": \"Pending Director Approval\",\n      \"type\": \"APPROVAL\"\n    },\n    {\n      \"code\": \"APPROVED\",\n      \"name\": \"Approved\",\n      \"type\": \"END\"\n    },\n    {\n      \"code\": \"REJECTED\",\n      \"name\": \"Rejected\",\n      \"type\": \"END\"\n    }\n  ],\n  \"transitions\": [\n    {\n      \"name\": \"Submit for Approval\",\n      \"fromState\": \"DRAFT\",\n      \"toState\": \"PENDING_MANAGER\",\n      \"requiresApproval\": false\n    },\n    {\n      \"name\": \"Manager Approve\",\n      \"fromState\": \"PENDING_MANAGER\",\n      \"toState\": \"PENDING_DIRECTOR\",\n      \"requiresApproval\": true,\n      \"approverRole\": \"MANAGER\"\n    },\n    {\n      \"name\": \"Manager Reject\",\n      \"fromState\": \"PENDING_MANAGER\",\n      \"toState\": \"REJECTED\",\n      \"requiresApproval\": true,\n      \"approverRole\": \"MANAGER\"\n    },\n    {\n      \"name\": \"Director Approve\",\n      \"fromState\": \"PENDING_DIRECTOR\",\n      \"toState\": \"APPROVED\",\n      \"requiresApproval\": true,\n      \"approverRole\": \"DIRECTOR\"\n    },\n    {\n      \"name\": \"Director Reject\",\n      \"fromState\": \"PENDING_DIRECTOR\",\n      \"toState\": \"REJECTED\",\n      \"requiresApproval\": true,\n      \"approverRole\": \"DIRECTOR\"\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/processes",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "processes"
+              ]
+            },
+            "description": "Create a new workflow process definition"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Workflow Process by Code",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/processes/:processCode",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "processes",
+                ":processCode"
+              ],
+              "variable": [
+                {
+                  "key": "processCode",
+                  "value": "ORDER_APPROVAL",
+                  "description": "Workflow process code"
+                }
+              ]
+            },
+            "description": "Retrieve a specific workflow process by its code"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Instances",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/instances",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "instances"
+              ]
+            },
+            "description": "Retrieve all workflow instances"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Workflow Instance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"processCode\": \"ORDER_APPROVAL\",\n  \"entityType\": \"ORDER\",\n  \"entityId\": \"1\",\n  \"initiatedBy\": \"john.doe@eflo.com\",\n  \"metadata\": {\n    \"orderId\": \"1\",\n    \"orderAmount\": 10000.00,\n    \"customerName\": \"John Doe\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/instances",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "instances"
+              ]
+            },
+            "description": "Create a new workflow instance for an entity"
+          },
+          "response": []
+        },
+        {
+          "name": "Start Workflow Instance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/instances/:instanceId/start",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "instances",
+                ":instanceId",
+                "start"
+              ],
+              "variable": [
+                {
+                  "key": "instanceId",
+                  "value": "1",
+                  "description": "Workflow instance ID"
+                }
+              ]
+            },
+            "description": "Start a workflow instance"
+          },
+          "response": []
+        },
+        {
+          "name": "Execute Transition",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"transitionName\": \"Submit for Approval\",\n  \"comments\": \"Submitting order for manager approval\",\n  \"metadata\": {\n    \"submittedAt\": \"2025-10-15T10:30:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/instances/:instanceId/transition",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "instances",
+                ":instanceId",
+                "transition"
+              ],
+              "variable": [
+                {
+                  "key": "instanceId",
+                  "value": "1",
+                  "description": "Workflow instance ID"
+                }
+              ]
+            },
+            "description": "Execute a state transition in the workflow"
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/tasks/my-tasks",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "tasks",
+                "my-tasks"
+              ]
+            },
+            "description": "Retrieve all tasks assigned to the current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Complete Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"action\": \"APPROVE\",\n  \"comments\": \"Approved by manager - order looks good\",\n  \"metadata\": {\n    \"approvedAt\": \"2025-10-15T11:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/tasks/:taskId/complete",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "tasks",
+                ":taskId",
+                "complete"
+              ],
+              "variable": [
+                {
+                  "key": "taskId",
+                  "value": "1",
+                  "description": "Task ID"
+                }
+              ]
+            },
+            "description": "Complete a workflow task"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Pending Approvals",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/approvals/pending",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "approvals",
+                "pending"
+              ]
+            },
+            "description": "Retrieve all pending approval tasks for the current user"
+          },
+          "response": []
+        },
+        {
+          "name": "Approve Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"decision\": \"APPROVED\",\n  \"comments\": \"Director approval granted\",\n  \"metadata\": {\n    \"approvalLevel\": \"DIRECTOR\",\n    \"approvedAt\": \"2025-10-15T12:00:00Z\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/workflow/approvals/:approvalId/approve",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "workflow",
+                "approvals",
+                ":approvalId",
+                "approve"
+              ],
+              "variable": [
+                {
+                  "key": "approvalId",
+                  "value": "1",
+                  "description": "Approval ID"
+                }
+              ]
+            },
+            "description": "Approve or reject a pending approval"
+          },
+          "response": []
+        }
+      ],
+      "description": "Workflow management endpoints"
+    },
+    {
+      "name": "User Service",
+      "item": [
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "description": "Retrieve all users from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"jane.smith@eflo.com\",\n  \"email\": \"jane.smith@eflo.com\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\",\n  \"roles\": [\"MANAGER\", \"USER\"],\n  \"businessUnitId\": \"BU-001\",\n  \"businessUnitName\": \"Sales Department\",\n  \"managerId\": \"1\",\n  \"attributes\": {\n    \"department\": \"Sales\",\n    \"location\": \"New York\",\n    \"employeeId\": \"EMP-002\"\n  },\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users"
+              ]
+            },
+            "description": "Create a new user in the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/:userId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "1",
+                  "description": "User ID"
+                }
+              ]
+            },
+            "description": "Retrieve a specific user by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"jane.smith@eflo.com\",\n  \"email\": \"jane.smith@eflo.com\",\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith-Johnson\",\n  \"roles\": [\"MANAGER\", \"USER\", \"APPROVER\"],\n  \"businessUnitId\": \"BU-001\",\n  \"businessUnitName\": \"Sales Department\",\n  \"managerId\": \"1\",\n  \"attributes\": {\n    \"department\": \"Sales\",\n    \"location\": \"New York\",\n    \"employeeId\": \"EMP-002\",\n    \"phone\": \"+1-555-0123\"\n  },\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/:userId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":userId"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "2",
+                  "description": "User ID"
+                }
+              ]
+            },
+            "description": "Update an existing user"
+          },
+          "response": []
+        },
+        {
+          "name": "Deactivate User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"reason\": \"Employee left the company\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/:userId/deactivate",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                ":userId",
+                "deactivate"
+              ],
+              "variable": [
+                {
+                  "key": "userId",
+                  "value": "2",
+                  "description": "User ID"
+                }
+              ]
+            },
+            "description": "Deactivate a user account"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Business Units",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/business-units",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "business-units"
+              ]
+            },
+            "description": "Retrieve all business units"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Business Unit",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"BU-002\",\n  \"name\": \"Marketing Department\",\n  \"description\": \"Marketing and Communications\",\n  \"parentId\": null,\n  \"managerId\": \"1\",\n  \"attributes\": {\n    \"costCenter\": \"CC-002\",\n    \"location\": \"New York\",\n    \"budget\": 500000\n  },\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/business-units",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "business-units"
+              ]
+            },
+            "description": "Create a new business unit"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Hierarchies",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/hierarchies",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "hierarchies"
+              ]
+            },
+            "description": "Retrieve all organizational hierarchies"
+          },
+          "response": []
+        },
+        {
+          "name": "Create Hierarchy",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"code\": \"REPORTING_HIERARCHY\",\n  \"name\": \"Reporting Hierarchy\",\n  \"description\": \"Employee reporting structure\",\n  \"type\": \"REPORTING\",\n  \"nodes\": [\n    {\n      \"userId\": \"1\",\n      \"parentUserId\": null,\n      \"level\": 1,\n      \"position\": \"CEO\"\n    },\n    {\n      \"userId\": \"2\",\n      \"parentUserId\": \"1\",\n      \"level\": 2,\n      \"position\": \"Sales Manager\"\n    }\n  ],\n  \"active\": true\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/users/hierarchies",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "users",
+                "hierarchies"
+              ]
+            },
+            "description": "Create a new organizational hierarchy"
+          },
+          "response": []
+        }
+      ],
+      "description": "User and organization management endpoints"
+    },
+    {
+      "name": "User Service (Complete)",
+      "item": [
+        { "name": "Users", "item": [
+          { "name": "List Users", "request": { "method": "GET", "header": [{"key":"Content-Type","value":"application/json"}], "url": {"raw": "{{base_url_gateway}}/api/v1/users?page=0&size=20", "host":["{{base_url_gateway}}"], "path":["api","v1","users"], "query":[{"key":"page","value":"0"},{"key":"size","value":"20"}] } } },
+          { "name": "Create User", "request": { "method": "POST", "header": [{"key":"Content-Type","value":"application/json"}], "body": { "mode":"raw", "raw": "{\n  \"email\": \"new.user@eflo.com\",\n  \"firstName\": \"New\",\n  \"lastName\": \"User\",\n  \"employeeNumber\": \"EMP999\",\n  \"department\": \"IT\"\n}" }, "url": {"raw":"{{base_url_gateway}}/api/v1/users","host":["{{base_url_gateway}}"],"path":["api","v1","users"]} } },
+          { "name": "Get User by ID", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId"], "variable":[{"key":"userId","value":"3"}] } } },
+          { "name": "Update User", "request": { "method": "PUT", "header": [{"key":"Content-Type","value":"application/json"}], "body": {"mode":"raw","raw":"{\n  \"email\": \"john.doe@eflo.com\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"department\": \"Sales\"\n}"}, "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId"],"variable":[{"key":"userId","value":"3"}]} } },
+          { "name": "Deactivate User", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId/deactivate","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId","deactivate"],"variable":[{"key":"userId","value":"3"}] } } },
+          { "name": "Reactivate User", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId/reactivate","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId","reactivate"],"variable":[{"key":"userId","value":"3"}] } } },
+          { "name": "Delete User", "request": { "method": "DELETE", "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId"],"variable":[{"key":"userId","value":"3"}] } } },
+          { "name": "Reset Password", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId/reset-password?newPassword=Temp123!&temporary=true","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId","reset-password"],"query":[{"key":"newPassword","value":"Temp123!"},{"key":"temporary","value":"true"}],"variable":[{"key":"userId","value":"3"}] } } },
+          { "name": "Record Login", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/users/:userId/login?ipAddress=127.0.0.1&userAgent=Postman","host":["{{base_url_gateway}}"],"path":["api","v1","users",":userId","login"],"query":[{"key":"ipAddress","value":"127.0.0.1"},{"key":"userAgent","value":"Postman"}],"variable":[{"key":"userId","value":"3"}] } } },
+          { "name": "Active Users", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/active","host":["{{base_url_gateway}}"],"path":["api","v1","users","active"] } } },
+          { "name": "Search Users", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/search?q=Admin","host":["{{base_url_gateway}}"],"path":["api","v1","users","search"],"query":[{"key":"q","value":"Admin"}] } } },
+          { "name": "Users by Department", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/department/IT","host":["{{base_url_gateway}}"],"path":["api","v1","users","department","IT"] } } },
+          { "name": "Counts", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/count","host":["{{base_url_gateway}}"],"path":["api","v1","users","count"] } } },
+          { "name": "Active Count", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/count/active","host":["{{base_url_gateway}}"],"path":["api","v1","users","count","active"] } } },
+          { "name": "Me Context", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/users/me/context","host":["{{base_url_gateway}}"],"path":["api","v1","users","me","context"] } } }
+        ]},
+        { "name": "Business Units", "item": [
+          { "name": "List", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units?page=0&size=20","host":["{{base_url_gateway}}"],"path":["api","v1","business-units"],"query":[{"key":"page","value":"0"},{"key":"size","value":"20"}] } } },
+          { "name": "Create", "request": { "method": "POST", "header":[{"key":"Content-Type","value":"application/json"}], "body":{"mode":"raw","raw":"{\n  \"code\": \"BU999\",\n  \"name\": \"Test BU\"\n}"}, "url": {"raw":"{{base_url_gateway}}/api/v1/business-units","host":["{{base_url_gateway}}"],"path":["api","v1","business-units"]} } },
+          { "name": "Get by ID", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1","host":["{{base_url_gateway}}"],"path":["api","v1","business-units","1"] } } },
+          { "name": "Get by Code", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/code/BU001","host":["{{base_url_gateway}}"],"path":["api","v1","business-units","code","BU001"] } } },
+          { "name": "Active", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/active","host":["{{base_url_gateway}}"],"path":["api","v1","business-units","active"] } } },
+          { "name": "By Type", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/type/DEALERSHIP","host":["{{base_url_gateway}}"],"path")["api","v1","business-units","type","DEALERSHIP"] } } },
+          { "name": "By Region", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/region/IDF","host":["{{base_url_gateway}}"],"path")["api","v1","business-units","region","IDF"] } } },
+          { "name": "Search", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/search?q=Paris","host":["{{base_url_gateway}}"],"path")["api","v1","business-units","search"],"query")[{"key":"q","value":"Paris"}] } } },
+          { "name": "Update", "request": { "method": "PUT", "header":[{"key":"Content-Type","value":"application/json"}], "body":{"mode":"raw","raw":"{\n  \"name\": \"Updated BU\"\n}"}, "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1","host":["{{base_url_gateway}}"],"path")["api","v1","business-units","1"] } } },
+          { "name": "Assign Manager", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1/assign-manager/2","host")["{{base_url_gateway}}"],"path")["api","v1","business-units","1","assign-manager","2"] } } },
+          { "name": "Remove Manager", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1/remove-manager","host")["{{base_url_gateway}}"],"path")["api","v1","business-units","1","remove-manager"] } } },
+          { "name": "Deactivate", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1/deactivate","host")["{{base_url_gateway}}"],"path")["api","v1","business-units","1","deactivate"] } } },
+          { "name": "Reactivate", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1/reactivate","host")["{{base_url_gateway}}"],"path")["api","v1","business-units","1","reactivate"] } } },
+          { "name": "Delete", "request": { "method": "DELETE", "url": {"raw":"{{base_url_gateway}}/api/v1/business-units/1","host")["{{base_url_gateway}}"],"path")["api","v1","business-units","1"] } } }
+        ]},
+        { "name": "Hierarchies", "item": [
+          { "name": "Update", "request": { "method": "PUT", "header":[{"key":"Content-Type","value":"application/json"}], "body":{"mode":"raw","raw":"{ }"}, "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/1","host":["{{base_url_gateway}}"],"path":["api","v1","hierarchies","1"]} } },
+          { "name": "Delete", "request": { "method": "DELETE", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/1","host":["{{base_url_gateway}}"],"path":["api","v1","hierarchies","1"]} } },
+          { "name": "Employee Hierarchies", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/employee/3","host":["{{base_url_gateway}}"],"path":["api","v1","hierarchies","employee","3"]} } },
+          { "name": "Manager Direct Reports", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/manager/2/direct-reports","host")["{{base_url_gateway}}"],"path")["api","v1","hierarchies","manager","2","direct-reports"]} } },
+          { "name": "Manager BU Reports", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/manager/2/business-unit/1","host")["{{base_url_gateway}}"],"path")["api","v1","hierarchies","manager","2","business-unit","1"]} } },
+          { "name": "Management Chain", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/employee/3/management-chain","host")["{{base_url_gateway}}"],"path")["api","v1","hierarchies","employee","3","management-chain"]} } },
+          { "name": "All Subordinates", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/manager/2/all-subordinates","host")["{{base_url_gateway}}"],"path")["api","v1","hierarchies","manager","2","all-subordinates"]} } },
+          { "name": "Business Unit Hierarchies", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/hierarchies/business-unit/1","host")["{{base_url_gateway}}"],"path")["api","v1","hierarchies","business-unit","1"]} } }
+        ]},
+        { "name": "User-Business Units", "item": [
+          { "name": "List for User", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/user-business-units/user/3","host")["{{base_url_gateway}}"],"path")["api","v1","user-business-units","user","3"]} } },
+          { "name": "Primary for User", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/user-business-units/user/3/primary","host")["{{base_url_gateway}}"],"path")["api","v1","user-business-units","user","3","primary"]} } },
+          { "name": "Is Assigned", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/user-business-units/3/is-assigned/1","host")["{{base_url_gateway}}"],"path")["api","v1","user-business-units","3","is-assigned","1"]} } },
+          { "name": "Users for BU", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/user-business-units/business-unit/1","host")["{{base_url_gateway}}"],"path")["api","v1","user-business-units","business-unit","1"]} } },
+          { "name": "Remove Assignment", "request": { "method": "DELETE", "url": {"raw":"{{base_url_gateway}}/api/v1/user-business-units/3/1","host")["{{base_url_gateway}}"],"path")["api","v1","user-business-units","3","1"]} } },
+          { "name": "Set Primary", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/user-business-units/3/set-primary/1","host")["{{base_url_gateway}}"],"path")["api","v1","user-business-units","3","set-primary","1"]} } }
+        ]},
+        { "name": "Keycloak Sync", "item": [
+          { "name": "Sync All", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/keycloak-sync/sync-all","host")["{{base_url_gateway}}"],"path")["api","v1","keycloak-sync","sync-all"]} } },
+          { "name": "Sync User", "request": { "method": "POST", "url": {"raw":"{{base_url_gateway}}/api/v1/keycloak-sync/sync-user/11111111-1111-1111-1111-111111111111","host")["{{base_url_gateway}}"],"path")["api","v1","keycloak-sync","sync-user","11111111-1111-1111-1111-111111111111"]} } },
+          { "name": "Status", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/keycloak-sync/status","host")["{{base_url_gateway}}"],"path")["api","v1","keycloak-sync","status"]} } }
+        ]},
+        { "name": "Health", "item": [
+          { "name": "DB", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/health/db","host")["{{base_url_gateway}}"],"path")["api","v1","health","db"]} } },
+          { "name": "Ready", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/health/ready","host")["{{base_url_gateway}}"],"path")["api","v1","health","ready"]} } },
+          { "name": "Live", "request": { "method": "GET", "url": {"raw":"{{base_url_gateway}}/api/v1/health/live","host")["{{base_url_gateway}}"],"path")["api","v1","health","live"]} } }
+        ]}
+      ],
+      "description": "User and organization management endpoints"
+    },
+    {
+      "name": "Document Service",
+      "item": [
+        {
+          "name": "Upload Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "multipart/form-data"
+              }
+            ],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "src": [],
+                  "description": "Document file to upload"
+                },
+                {
+                  "key": "documentType",
+                  "value": "CONTRACT",
+                  "type": "text",
+                  "description": "Type of document (CONTRACT, INVOICE, QUOTE, etc.)"
+                },
+                {
+                  "key": "entityType",
+                  "value": "ORDER",
+                  "type": "text",
+                  "description": "Entity type the document is related to"
+                },
+                {
+                  "key": "entityId",
+                  "value": "1",
+                  "type": "text",
+                  "description": "Entity ID the document is related to"
+                },
+                {
+                  "key": "description",
+                  "value": "Order contract document",
+                  "type": "text",
+                  "description": "Document description"
+                },
+                {
+                  "key": "metadata",
+                  "value": "{\"department\":\"Sales\",\"confidential\":true}",
+                  "type": "text",
+                  "description": "Additional metadata as JSON"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents/upload",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "upload"
+              ]
+            },
+            "description": "Upload a document file to the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Documents",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents"
+              ]
+            },
+            "description": "Retrieve all documents from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Document by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents/:documentId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":documentId"
+              ],
+              "variable": [
+                {
+                  "key": "documentId",
+                  "value": "1",
+                  "description": "Document ID"
+                }
+              ]
+            },
+            "description": "Retrieve a specific document by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Document",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"documentType\": \"CONTRACT\",\n  \"description\": \"Updated order contract document\",\n  \"metadata\": {\n    \"department\": \"Sales\",\n    \"confidential\": true,\n    \"version\": \"2.0\"\n  },\n  \"status\": \"APPROVED\"\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents/:documentId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":documentId"
+              ],
+              "variable": [
+                {
+                  "key": "documentId",
+                  "value": "1",
+                  "description": "Document ID"
+                }
+              ]
+            },
+            "description": "Update document metadata and properties"
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Document",
+          "request": {
+            "method": "DELETE",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents/:documentId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":documentId"
+              ],
+              "variable": [
+                {
+                  "key": "documentId",
+                  "value": "1",
+                  "description": "Document ID"
+                }
+              ]
+            },
+            "description": "Delete a document from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Validate Document",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents/:documentId/validate",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                ":documentId",
+                "validate"
+              ],
+              "variable": [
+                {
+                  "key": "documentId",
+                  "value": "1",
+                  "description": "Document ID"
+                }
+              ]
+            },
+            "description": "Validate document format and content"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Documents by Order",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/documents/order/:orderId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "documents",
+                "order",
+                ":orderId"
+              ],
+              "variable": [
+                {
+                  "key": "orderId",
+                  "value": "1",
+                  "description": "Order ID"
+                }
+              ]
+            },
+            "description": "Retrieve all documents associated with an order"
+          },
+          "response": []
+        }
+      ],
+      "description": "Document management endpoints"
+    },
+    {
+      "name": "Commission Service",
+      "item": [
+        {
+          "name": "Get All Commissions",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/commissions",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "commissions"
+              ]
+            },
+            "description": "Retrieve all commissions from the system"
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Commission",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderId\": \"1\",\n  \"salespersonId\": \"2\",\n  \"salespersonName\": \"Jane Smith\",\n  \"orderAmount\": 10000.00,\n  \"orderDate\": \"2025-10-15T10:00:00Z\",\n  \"productCategory\": \"ENTERPRISE\",\n  \"commissionRules\": {\n    \"baseRate\": 0.10,\n    \"tierBonus\": 0.02,\n    \"productBonus\": 0.01\n  },\n  \"metadata\": {\n    \"customerId\": \"CUST-001\",\n    \"region\": \"Northeast\"\n  }\n}"
+            },
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/commissions/calculate",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "commissions",
+                "calculate"
+              ]
+            },
+            "description": "Calculate commission for an order"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Commission by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/commissions/:commissionId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "commissions",
+                ":commissionId"
+              ],
+              "variable": [
+                {
+                  "key": "commissionId",
+                  "value": "1",
+                  "description": "Commission ID"
+                }
+              ]
+            },
+            "description": "Retrieve a specific commission by ID"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Commissions by Salesperson",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{base_url_gateway}}/api/v1/commissions/salesperson/:salespersonId",
+              "host": [
+                "{{base_url_gateway}}"
+              ],
+              "path": [
+                "api",
+                "v1",
+                "commissions",
+                "salesperson",
+                ":salespersonId"
+              ],
+              "variable": [
+                {
+                  "key": "salespersonId",
+                  "value": "2",
+                  "description": "Salesperson ID"
+                }
+              ]
+            },
+            "description": "Retrieve all commissions for a specific salesperson"
+          },
+          "response": []
+        }
+      ],
+      "description": "Commission calculation and management endpoints"
+    },
+    {
+      "name": "Health Checks",
+      "item": [
+        {
+          "name": "Eureka Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8761/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8761",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check Eureka Discovery Server health status"
+          },
+          "response": []
+        },
+        {
+          "name": "Gateway Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8080/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8080",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check API Gateway health status"
+          },
+          "response": []
+        },
+        {
+          "name": "Order Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8089/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8089",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check Order Service health status"
+          },
+          "response": []
+        },
+        {
+          "name": "Workflow Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8091/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8091",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check Workflow Service health status"
+          },
+          "response": []
+        },
+        {
+          "name": "User Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8084/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8084",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check User Service health status"
+          },
+          "response": []
+        },
+        {
+          "name": "Document Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8083/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8083",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check Document Service health status"
+          },
+          "response": []
+        },
+        {
+          "name": "Commission Service Health",
+          "request": {
+            "auth": {
+              "type": "noauth"
+            },
+            "method": "GET",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "http://localhost:8082/actuator/health",
+              "protocol": "http",
+              "host": [
+                "localhost"
+              ],
+              "port": "8082",
+              "path": [
+                "actuator",
+                "health"
+              ]
+            },
+            "description": "Check Commission Service health status"
+          },
+          "response": []
+        }
+      ],
+      "description": "Health check endpoints for all services"
+    }
+  ]
+}

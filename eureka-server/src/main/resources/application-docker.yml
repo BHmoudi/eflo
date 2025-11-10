@@ -1,0 +1,67 @@
+# =====================================================
+# Eureka Server - Docker Profile
+# =====================================================
+# This configuration is used for Docker containerized deployment
+# Run with: --spring.profiles.active=docker
+# =====================================================
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      # Use Docker service name for service discovery
+      defaultZone: http://eureka-server:8761/eureka/
+
+  server:
+    # Enable self-preservation for container environments
+    enable-self-preservation: true
+    eviction-interval-timer-in-ms: 60000
+    renewal-percent-threshold: 0.85
+    response-cache-update-interval-ms: 30000
+
+  instance:
+    # Use Docker service hostname
+    hostname: eureka-server
+
+    # Prefer IP address in containerized environments
+    prefer-ip-address: true
+
+    # Standard heartbeat settings
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+    # Non-secure port for container communication
+    non-secure-port: 8761
+    non-secure-port-enabled: true
+
+    # Metadata for Docker environment
+    metadata-map:
+      environment: docker
+      containerized: true
+
+# =====================================================
+# Actuator - Docker Settings
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+
+  endpoint:
+    health:
+      show-details: always
+
+# =====================================================
+# Logging - Docker Settings
+# =====================================================
+logging:
+  level:
+    root: INFO
+    com.eflo: INFO
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    # Optimized for Docker logs
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

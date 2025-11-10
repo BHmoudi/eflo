@@ -1,0 +1,161 @@
+'use client';
+
+import React, { useState } from 'react';
+import { Bell, User, LogOut, Settings, Menu, ChevronsLeft, ChevronsRight, Search } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { ThemeToggleButton } from '@/components/common/ThemeToggleButton';
+import LanguageSwitcher from "@/components/common/LanguageSwitcher";
+import { useSidebar } from '@/context/SidebarContext';
+import { useAuth } from '@/context/AuthContext';
+
+export default function Header() {
+  const [showUserMenu, setShowUserMenu] = useState(false);
+  const [showNotifications, setShowNotifications] = useState(false);
+  const { isExpanded, isMobile, toggleExpanded, toggleMobile } = useSidebar();
+  const { user, logout } = useAuth();
+
+  const handleLogout = () => {
+    logout();
+    setShowUserMenu(false);
+  };
+
+  return (
+    <header className="h-16 bg-white border-b border-gray-200 flex items-center justify-between px-6 dark:bg-gray-900 dark:border-gray-800">
+      {/* Left side - sidebar toggle and page title */}
+      <div className="flex items-center gap-4">
+        {/* Mobile menu toggle */}
+        <button
+          onClick={toggleMobile}
+          className="lg:hidden p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800"
+          aria-label="Toggle mobile menu"
+        >
+          <Menu className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        </button>
+
+        {/* Desktop sidebar toggle */}
+        <button
+          onClick={toggleExpanded}
+          className="hidden lg:flex p-2 -ml-2 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800"
+          aria-label="Toggle sidebar"
+        >
+          {isExpanded ? (
+            <ChevronsLeft className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          ) : (
+            <ChevronsRight className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          )}
+        </button>
+
+        <h1 className="text-xl font-semibold text-gray-900 dark:text-white">Workflow Administration</h1>
+      </div>
+
+      {/* Right side - search hint, theme toggle, notifications and user menu */}
+      <div className="flex items-center gap-3">
+        {/* Command Palette Hint */}
+        <div className="hidden md:flex items-center gap-2 px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 text-sm border border-gray-200 dark:border-gray-700">
+          <Search className="w-4 h-4" />
+          <span className="text-xs font-medium">Quick Search</span>
+          <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
+            {typeof navigator !== 'undefined' && navigator.platform.toUpperCase().indexOf('MAC') >= 0 ? '⌘' : 'Ctrl'}
+          </kbd>
+          <kbd className="px-1.5 py-0.5 rounded text-xs font-mono bg-white dark:bg-gray-700 border border-gray-300 dark:border-gray-600">
+            K
+          </kbd>
+        </div>
+
+        {/* Language Switcher */}
+        <LanguageSwitcher />
+
+        {/* Theme Toggle */}
+        <ThemeToggleButton />
+
+        {/* Notifications */}
+        <div className="relative">
+          <button
+            onClick={() => setShowNotifications(!showNotifications)}
+            className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800"
+          >
+            <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
+          </button>
+
+          {showNotifications && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowNotifications(false)}
+              ></div>
+              <div className="absolute right-0 mt-2 w-80 bg-white rounded-lg shadow-theme-lg border border-gray-200 z-20 dark:bg-gray-900 dark:border-gray-800">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-800">
+                  <h3 className="font-semibold text-gray-900 dark:text-white">Notifications</h3>
+                </div>
+                <div className="max-h-96 overflow-y-auto">
+                  <div className="p-4 hover:bg-gray-50 border-b border-gray-100 dark:hover:bg-white/5 dark:border-gray-800">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white/90">New approval request</p>
+                    <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">2 minutes ago</p>
+                  </div>
+                  <div className="p-4 hover:bg-gray-50 border-b border-gray-100 dark:hover:bg-white/5 dark:border-gray-800">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white/90">Task completed</p>
+                    <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">1 hour ago</p>
+                  </div>
+                  <div className="p-4 hover:bg-gray-50 dark:hover:bg-white/5">
+                    <p className="text-sm font-medium text-gray-900 dark:text-white/90">Workflow updated</p>
+                    <p className="text-xs text-gray-500 mt-1 dark:text-gray-400">3 hours ago</p>
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* User menu */}
+        <div className="relative">
+          <button
+            onClick={() => setShowUserMenu(!showUserMenu)}
+            className="flex items-center gap-2 p-2 rounded-lg hover:bg-gray-100 transition-colors dark:hover:bg-gray-800"
+          >
+            <div className="w-8 h-8 bg-brand-500 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div className="text-left hidden md:block">
+              <p className="text-sm font-medium text-gray-900 dark:text-white">{user?.username || 'User'}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{user?.email || ''}</p>
+            </div>
+          </button>
+
+          {showUserMenu && (
+            <>
+              <div
+                className="fixed inset-0 z-10"
+                onClick={() => setShowUserMenu(false)}
+              ></div>
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-theme-lg border border-gray-200 z-20 dark:bg-gray-900 dark:border-gray-800">
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-t-lg dark:text-gray-300 dark:hover:bg-white/5"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <User className="w-4 h-4" />
+                  Profile
+                </button>
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-white/5"
+                  onClick={() => setShowUserMenu(false)}
+                >
+                  <Settings className="w-4 h-4" />
+                  Settings
+                </button>
+                <div className="border-t border-gray-200 dark:border-gray-800"></div>
+                <button
+                  className="w-full flex items-center gap-2 px-4 py-2 text-sm text-error-600 hover:bg-error-50 rounded-b-lg dark:text-error-500 dark:hover:bg-error-500/10"
+                  onClick={handleLogout}
+                >
+                  <LogOut className="w-4 h-4" />
+                  Logout
+                </button>
+              </div>
+            </>
+          )}
+        </div>
+      </div>
+    </header>
+  );
+}

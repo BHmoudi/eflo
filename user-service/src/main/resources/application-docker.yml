@@ -1,0 +1,55 @@
+spring:
+  # Database Configuration for Docker
+  datasource:
+    url: jdbc:postgresql://postgres-user:5432/user_db
+    username: user_user
+    password: ${SPRING_DATASOURCE_PASSWORD:userpass}
+
+  # Kafka Configuration for Docker
+  kafka:
+    bootstrap-servers: kafka:29092
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    consumer:
+      group-id: user-service-group
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      properties:
+        spring.json.trusted.packages: "*"
+
+  # Security & OAuth2 for Docker
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://keycloak:8180/realms/eflo/protocol/openid-connect/certs}
+
+# Keycloak Configuration for Docker
+keycloak:
+  auth-server-url: http://keycloak:8180
+  realm: eflo
+  admin:
+    username: ${KEYCLOAK_ADMIN_USERNAME:admin}
+    password: ${KEYCLOAK_ADMIN_PASSWORD:change_me_keycloak_admin_password_2025}
+    client-id: admin-cli
+
+# Eureka Client Configuration for Docker
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    hostname: user-service
+
+# Logging Configuration for Docker
+logging:
+  level:
+    com.eflo.user: INFO
+    org.springframework.security: WARN
+    org.hibernate.SQL: WARN

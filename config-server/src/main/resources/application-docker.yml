@@ -1,0 +1,62 @@
+# =====================================================
+# Config Server - Docker Profile
+# =====================================================
+# Configuration for Docker containerized deployment
+# =====================================================
+
+spring:
+  cloud:
+    config:
+      server:
+        git:
+          # Use local filesystem in Docker (mounted volume)
+          # Or use remote Git repository
+          uri: file:///config-repo
+
+          # For remote Git repository in production:
+          # uri: https://github.com/your-org/config-repo
+          # username: ${GIT_USERNAME}
+          # password: ${GIT_PASSWORD}
+
+          default-label: main
+          search-paths: .
+          clone-on-start: true
+          force-pull: true
+          timeout: 10
+
+      bus:
+        enabled: true
+        refresh:
+          enabled: true
+
+  # Kafka Configuration for Docker
+  kafka:
+    bootstrap-servers: kafka:29092
+    consumer:
+      group-id: config-server-group
+      auto-offset-reset: earliest
+    producer:
+      acks: all
+
+# Eureka Configuration for Docker
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    hostname: config-server
+    prefer-ip-address: true
+    non-secure-port: 8888
+    metadata-map:
+      environment: docker
+      containerized: true
+
+# Logging for Docker
+logging:
+  level:
+    root: INFO
+    com.eflo: INFO
+    org.springframework.cloud.config: INFO
+    org.springframework.cloud.bus: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

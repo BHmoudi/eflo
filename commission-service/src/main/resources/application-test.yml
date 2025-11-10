@@ -1,0 +1,27 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5436/commission_db
+    username: commission_user
+    password: commission_password
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+
+  kafka:
+    enabled: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          enabled: false
+
+eureka:
+  client:
+    enabled: false
+
+logging:
+  level:
+    com.eflo.commission: DEBUG

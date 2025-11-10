@@ -1,0 +1,81 @@
+{
+  "mappingName": "Generic Order Import Mapping",
+  "version": "1.0",
+  "source": "GENERIC",
+  "description": "Generic mapping for standard order JSON format",
+  "dateFormat": "yyyy-MM-dd'T'HH:mm:ss",
+
+  "customer": {
+    "type": "customer.type",
+    "civility": "customer.civility",
+    "firstName": "customer.firstName",
+    "lastName": "customer.lastName",
+    "email": "customer.email",
+    "phoneMobile": "customer.phone",
+    "address": "customer.address.street",
+    "postalCode": "customer.address.postalCode",
+    "city": "customer.address.city",
+    "country": "customer.address.country"
+  },
+
+  "order": {
+    "orderNumber": "orderNumber",
+    "orderType": "orderType",
+    "brandName": "vehicle.brand",
+    "modelName": "vehicle.model",
+    "versionName": "vehicle.version",
+    "exteriorColorName": "vehicle.color",
+    "fuelType": "vehicle.fuelType",
+    "co2Level": "vehicle.co2",
+
+    "catalogPriceInclTax": "pricing.catalogPrice",
+    "sellingPriceExclTax": "pricing.sellingPrice",
+    "discountAmountExclTax": "pricing.discount",
+    "vatRate": "pricing.vatRate",
+
+    "expectedDeliveryDate": {
+      "source": "deliveryDate",
+      "transform": "PARSE_DATE"
+    }
+  },
+
+  "tradeIn": {
+    "enabled": {
+      "source": "tradeIn",
+      "condition": "NOT_NULL"
+    },
+    "brand": "tradeIn.brand",
+    "model": "tradeIn.model",
+    "vin": "tradeIn.vin",
+    "mileage": "tradeIn.mileage",
+    "finalValue": "tradeIn.value"
+  },
+
+  "options": {
+    "arrayPath": "options",
+    "fields": {
+      "optionCode": "code",
+      "optionName": "name",
+      "unitPriceExclTax": "price"
+    }
+  },
+
+  "supplements": {
+    "arrayPath": "supplements",
+    "fields": {
+      "supplementName": "name",
+      "amountExclTax": "amount",
+      "supplementType": "type"
+    }
+  },
+
+  "services": {
+    "arrayPath": "services",
+    "fields": {
+      "serviceName": "name",
+      "serviceCode": "code",
+      "unitPriceExclTax": "price",
+      "durationMonths": "duration"
+    }
+  }
+}

@@ -1,0 +1,245 @@
+{
+  "name": "AI Document Analysis for Eflo",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "document-analysis",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Document Uploaded",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "doc-analysis"
+    },
+    {
+      "parameters": {
+        "url": "={{$json.documentUrl}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "options": {
+          "response": {
+            "response": {
+              "fullResponse": false,
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-document",
+      "name": "Download Document from MinIO",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "analyzeImage",
+        "text": "Please analyze this document and extract the following information in JSON format:\n- Document type (invoice, contract, ID, etc.)\n- Key data fields (dates, amounts, names, numbers)\n- Validation status (valid/invalid with reasons)\n- Confidence score (0-1)\n\nIf it's an invoice, extract:\n- Invoice number\n- Invoice date\n- Total amount\n- Vendor name\n- VAT amount\n- Line items\n\nReturn ONLY valid JSON, no markdown or explanations.",
+        "options": {
+          "maxTokens": 2000,
+          "temperature": 0.2
+        }
+      },
+      "id": "ai-analysis",
+      "name": "AI Analysis (GPT-4 Vision)",
+      "type": "n8n-nodes-base.openAi",
+      "typeVersion": 1,
+      "position": [690, 300],
+      "credentials": {
+        "openAiApi": {
+          "id": "2",
+          "name": "OpenAI Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Parse AI response and format for document service\nconst aiResponse = $input.first().json.response;\n\ntry {\n  // Extract JSON from AI response (might be wrapped in markdown)\n  let jsonStr = aiResponse;\n  const jsonMatch = aiResponse.match(/```json\\s*([\\s\\S]*?)\\s*```/);\n  if (jsonMatch) {\n    jsonStr = jsonMatch[1];\n  }\n  \n  const analysisResult = JSON.parse(jsonStr);\n  \n  // Get original webhook data\n  const webhookData = $('Webhook - Document Uploaded').first().json;\n  \n  return {\n    json: {\n      documentId: webhookData.documentId,\n      workflowInstanceId: webhookData.workflowInstanceId,\n      taskId: webhookData.taskId,\n      analysisResult: analysisResult,\n      status: 'completed',\n      timestamp: new Date().toISOString()\n    }\n  };\n} catch (error) {\n  return {\n    json: {\n      documentId: $('Webhook - Document Uploaded').first().json.documentId,\n      status: 'error',\n      error: error.message,\n      timestamp: new Date().toISOString()\n    }\n  };\n}"
+      },
+      "id": "format-result",
+      "name": "Format Analysis Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://document-service:8083/api/v1/documents/{{$json.documentId}}/metadata",
+        "method": "PUT",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "analysisResult",
+              "value": "={{JSON.stringify($json.analysisResult)}}"
+            },
+            {
+              "name": "analysisStatus",
+              "value": "={{$json.status}}"
+            },
+            {
+              "name": "analysisTimestamp",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "update-document",
+      "name": "Update Document Metadata",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1130, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://workflow-service:8091/api/v1/tasks/{{$json.taskId}}/complete",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "COMPLETED"
+            },
+            {
+              "name": "result",
+              "value": "={{JSON.stringify($json.analysisResult)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "complete-task",
+      "name": "Complete Workflow Task",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1350, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 300]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "mergeByPosition",
+        "options": {}
+      },
+      "id": "error-handler",
+      "name": "Error Handler",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [1130, 500]
+    }
+  ],
+  "connections": {
+    "Webhook - Document Uploaded": {
+      "main": [
+        [
+          {
+            "node": "Download Document from MinIO",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Document from MinIO": {
+      "main": [
+        [
+          {
+            "node": "AI Analysis (GPT-4 Vision)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Analysis (GPT-4 Vision)": {
+      "main": [
+        [
+          {
+            "node": "Format Analysis Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format Analysis Result": {
+      "main": [
+        [
+          {
+            "node": "Update Document Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update Document Metadata": {
+      "main": [
+        [
+          {
+            "node": "Complete Workflow Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Workflow Task": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "staticData": null,
+  "tags": ["eflo", "ai", "document-analysis"],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-10T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,222 @@
+package com.eflo.document.domain.repository;
+
+import com.eflo.document.domain.entity.DocumentAccessLog;
+import com.eflo.document.domain.enums.AccessAction;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
+import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+/**
+ * Repository interface for DocumentAccessLog entity.
+ * Provides CRUD operations and custom query methods for document access audit logging.
+ */
+@Repository
+public interface DocumentAccessLogRepository extends JpaRepository<DocumentAccessLog, Long> {
+
+    /**
+     * Finds all access logs for a specific document.
+     *
+     * @param documentId the document identifier
+     * @return list of access logs for the document
+     */
+    List<DocumentAccessLog> findByDocumentId(Long documentId);
+
+    /**
+     * Finds all access logs for a specific user.
+     *
+     * @param userId the user identifier
+     * @return list of access logs for the user
+     */
+    List<DocumentAccessLog> findByUserId(String userId);
+
+    /**
+     * Finds all access logs for a specific action type.
+     *
+     * @param action the access action type
+     * @return list of access logs for the action
+     */
+    List<DocumentAccessLog> findByAction(AccessAction action);
+
+    /**
+     * Finds all access logs for a document ordered by access time descending.
+     *
+     * @param documentId the document identifier
+     * @return list of access logs ordered by most recent first
+     */
+    List<DocumentAccessLog> findByDocumentIdOrderByAccessedAtDesc(Long documentId);
+
+    /**
+     * Finds access logs for a user within a specific time range.
+     *
+     * @param userId the user identifier
+     * @param start the start date/time
+     * @param end the end date/time
+     * @return list of access logs within the time range
+     */
+    List<DocumentAccessLog> findByUserIdAndAccessedAtBetween(
+            String userId,
+            LocalDateTime start,
+            LocalDateTime end);
+
+    /**
+     * Finds access logs for a document and user combination.
+     *
+     * @param documentId the document identifier
+     * @param userId the user identifier
+     * @return list of access logs matching the criteria
+     */
+    List<DocumentAccessLog> findByDocumentIdAndUserId(Long documentId, String userId);
+
+    /**
+     * Finds access logs by document and action.
+     *
+     * @param documentId the document identifier
+     * @param action the access action
+     * @return list of access logs matching the criteria
+     */
+    List<DocumentAccessLog> findByDocumentIdAndAction(Long documentId, AccessAction action);
+
+    /**
+     * Finds recent access logs within a time period.
+     *
+     * @param since the start date/time
+     * @return list of recent access logs
+     */
+    @Query("SELECT dal FROM DocumentAccessLog dal WHERE dal.accessedAt >= :since " +
+           "ORDER BY dal.accessedAt DESC")
+    List<DocumentAccessLog> findRecentAccessLogs(@Param("since") LocalDateTime since);
+
+    /**
+     * Finds the last access log for a document by a user.
+     *
+     * @param documentId the document identifier
+     * @param userId the user identifier
+     * @return the most recent access log if found
+     */
+    @Query("SELECT dal FROM DocumentAccessLog dal WHERE dal.document.id = :documentId " +
+           "AND dal.userId = :userId ORDER BY dal.accessedAt DESC LIMIT 1")
+    DocumentAccessLog findLastAccessByDocumentAndUser(
+            @Param("documentId") Long documentId,
+            @Param("userId") String userId);
+
+    /**
+     * Counts access logs for a document.
+     *
+     * @param documentId the document identifier
+     * @return count of access logs
+     */
+    long countByDocumentId(Long documentId);
+
+    /**
+     * Counts access logs by action type.
+     *
+     * @param action the access action
+     * @return count of access logs for the action
+     */
+    long countByAction(AccessAction action);
+
+    /**
+     * Gets access statistics by action type.
+     *
+     * @return list of action counts
+     */
+    @Query("SELECT dal.action, COUNT(dal) FROM DocumentAccessLog dal GROUP BY dal.action")
+    List<Object[]> getAccessStatsByAction();
+
+    /**
+     * Gets access statistics by user.
+     *
+     * @param since optional date filter
+     * @return list of user access counts
+     */
+    @Query("SELECT dal.userId, COUNT(dal) FROM DocumentAccessLog dal WHERE " +
+           "(:since IS NULL OR dal.accessedAt >= :since) GROUP BY dal.userId ORDER BY COUNT(dal) DESC")
+    List<Object[]> getAccessStatsByUser(@Param("since") LocalDateTime since);
+
+    /**
+     * Gets access statistics for a document by action.
+     *
+     * @param documentId the document identifier
+     * @return list of action counts for the document
+     */
+    @Query("SELECT dal.action, COUNT(dal) FROM DocumentAccessLog dal WHERE dal.document.id = :documentId " +
+           "GROUP BY dal.action")
+    List<Object[]> getAccessStatsByActionForDocument(@Param("documentId") Long documentId);
+
+    /**
+     * Finds all modifying actions (upload, update, delete, etc.) for a document.
+     *
+     * @param documentId the document identifier
+     * @return list of modifying access logs
+     */
+    @Query("SELECT dal FROM DocumentAccessLog dal WHERE dal.document.id = :documentId " +
+           "AND dal.action IN ('UPLOAD', 'UPDATE', 'DELETE', 'VALIDATE', 'REJECT', 'ARCHIVE', 'RESTORE') " +
+           "ORDER BY dal.accessedAt DESC")
+    List<DocumentAccessLog> findModifyingActionsByDocument(@Param("documentId") Long documentId);
+
+    /**
+     * Finds access logs with failed status.
+     *
+     * @return list of failed access attempts
+     */
+    @Query("SELECT dal FROM DocumentAccessLog dal WHERE dal.actionResult = 'FAILURE' " +
+           "ORDER BY dal.accessedAt DESC")
+    List<DocumentAccessLog> findFailedAccessAttempts();
+
+    /**
+     * Finds access logs by IP address.
+     *
+     * @param ipAddress the IP address
+     * @return list of access logs from the IP address
+     */
+    List<DocumentAccessLog> findByIpAddress(String ipAddress);
+
+    /**
+     * Finds suspicious access patterns (multiple failed attempts from same IP).
+     *
+     * @param threshold minimum number of failed attempts
+     * @param since time window start
+     * @return list of suspicious IP addresses
+     */
+    @Query("SELECT dal.ipAddress, COUNT(dal) FROM DocumentAccessLog dal WHERE " +
+           "dal.actionResult = 'FAILURE' AND dal.accessedAt >= :since " +
+           "GROUP BY dal.ipAddress HAVING COUNT(dal) >= :threshold")
+    List<Object[]> findSuspiciousAccessPatterns(
+            @Param("threshold") long threshold,
+            @Param("since") LocalDateTime since);
+
+    /**
+     * Deletes old access logs before a specific date.
+     *
+     * @param before the cutoff date
+     */
+    @Query("DELETE FROM DocumentAccessLog dal WHERE dal.accessedAt < :before")
+    void deleteAccessLogsBefore(@Param("before") LocalDateTime before);
+
+    /**
+     * Finds unique users who accessed a document.
+     *
+     * @param documentId the document identifier
+     * @return list of unique user identifiers
+     */
+    @Query("SELECT DISTINCT dal.userId FROM DocumentAccessLog dal WHERE dal.document.id = :documentId")
+    List<String> findUniqueUsersByDocument(@Param("documentId") Long documentId);
+
+    /**
+     * Gets daily access statistics within a date range.
+     *
+     * @param startDate the start date
+     * @param endDate the end date
+     * @return list of daily access counts
+     */
+    @Query("SELECT CAST(dal.accessedAt AS date), COUNT(dal) FROM DocumentAccessLog dal WHERE " +
+           "dal.accessedAt BETWEEN :startDate AND :endDate " +
+           "GROUP BY CAST(dal.accessedAt AS date) ORDER BY CAST(dal.accessedAt AS date)")
+    List<Object[]> getDailyAccessStats(
+            @Param("startDate") LocalDateTime startDate,
+            @Param("endDate") LocalDateTime endDate);
+}

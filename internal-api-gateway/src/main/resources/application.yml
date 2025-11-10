@@ -1,0 +1,311 @@
+# ======================================================
+# Internal API Gateway - Base Configuration
+# ======================================================
+
+server:
+  port: 8080
+
+spring:
+  application:
+    name: internal-api-gateway
+
+  cloud:
+    gateway:
+      discovery:
+        locator:
+          enabled: true
+          lower-case-service-id: true
+
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:3000"
+              - "https://eflo.app"
+            allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"]
+            allowedHeaders: ["*"]
+            allowCredentials: true
+            maxAge: 3600
+
+      routes:
+        # Order Service Routes
+        - id: order-service
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/orders/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderServiceCircuitBreaker
+                fallbackUri: forward:/fallback/order
+            # RequestRateLimiter disabled - userKeyResolver bean not defined
+            # - name: RequestRateLimiter
+            #   args:
+            #     key-resolver: "#{@userKeyResolver}"
+            #     redis-rate-limiter.replenishRate: 100
+            #     redis-rate-limiter.burstCapacity: 200
+
+        # Order Conditions Routes (also to ORDER-SERVICE)
+        - id: order-conditions
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/conditions/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderServiceCircuitBreaker
+                fallbackUri: forward:/fallback/order
+
+        # Order Customers Routes (also to ORDER-SERVICE)
+        - id: order-customers
+          uri: lb://order-service
+          predicates:
+            - Path=/api/v1/customers/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: orderServiceCircuitBreaker
+                fallbackUri: forward:/fallback/order
+
+        # Workflow Service Routes
+        - id: workflow-service
+          uri: lb://workflow-service
+          predicates:
+            - Path=/api/v1/workflow,/api/v1/workflow/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: workflowServiceCircuitBreaker
+                fallbackUri: forward:/fallback/workflow
+
+        # Commission Service Routes
+        - id: commission-service
+          uri: lb://commission-service
+          predicates:
+            - Path=/api/v1/commissions,/api/v1/commissions/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: commissionServiceCircuitBreaker
+                fallbackUri: forward:/fallback/commission
+
+        # Document Service Routes
+        - id: document-service
+          uri: http://document-service:8083
+          predicates:
+            - Path=/api/v1/documents,/api/v1/documents/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: documentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/document
+
+        # Document Type Service Routes
+        - id: document-type-service
+          uri: http://document-service:8083
+          predicates:
+            - Path=/api/v1/document-types,/api/v1/document-types/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: documentServiceCircuitBreaker
+                fallbackUri: forward:/fallback/document
+
+        # Document Generation Service Routes
+        - id: docgen-templates
+          uri: lb://document-generation-service
+          predicates:
+            - Path=/api/v1/templates,/api/v1/templates/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: docgenServiceCircuitBreaker
+                fallbackUri: forward:/fallback/docgen
+
+        - id: docgen-generate
+          uri: lb://document-generation-service
+          predicates:
+            - Path=/api/v1/generate,/api/v1/generate/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: docgenServiceCircuitBreaker
+                fallbackUri: forward:/fallback/docgen
+
+        # User Service Routes
+        - id: user-service-users
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/users,/api/v1/users/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
+
+        - id: user-service-business-units
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/business-units/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
+
+        - id: user-service-assignments
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/user-business-units/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
+
+        - id: user-service-hierarchies
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/hierarchies/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
+
+        - id: user-service-keycloak-sync
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/keycloak-sync/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
+
+        - id: user-service-health
+          uri: lb://user-service
+          predicates:
+            - Path=/api/v1/health/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: userServiceCircuitBreaker
+                fallbackUri: forward:/fallback/user
+
+        # Reference Service Routes
+        - id: reference-service
+          uri: lb://reference-service
+          predicates:
+            - Path=/api/v1/references/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: referenceServiceCircuitBreaker
+                fallbackUri: forward:/fallback/reference
+
+        # Reporting Service Routes
+        - id: reporting-service
+          uri: lb://reporting-service
+          predicates:
+            - Path=/api/v1/reports/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: reportingServiceCircuitBreaker
+                fallbackUri: forward:/fallback/reporting
+
+        # Alert Service Routes
+        - id: alert-service
+          uri: lb://alert-service
+          predicates:
+            - Path=/api/v1/alerts/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: alertServiceCircuitBreaker
+                fallbackUri: forward:/fallback/alert
+
+        # External API Service Routes
+        - id: external-api-service
+          uri: lb://external-api-service
+          predicates:
+            - Path=/api/v1/external/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: externalApiServiceCircuitBreaker
+                fallbackUri: forward:/fallback/external-api
+
+        # Invoice Service Routes
+        - id: invoice-service
+          uri: lb://invoice-service
+          predicates:
+            - Path=/api/v1/invoices/**
+          filters:
+            - name: CircuitBreaker
+              args:
+                name: invoiceServiceCircuitBreaker
+                fallbackUri: forward:/fallback/invoice
+
+      default-filters:
+        - name: AddRequestHeader
+          args:
+            name: X-Gateway
+            value: Internal-Gateway
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD:}
+      timeout: 2000ms
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8180/realms/eflo/protocol/openid-connect/certs
+
+gateway:
+  auth:
+    enforce: false
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        slowCallRateThreshold: 50
+        slowCallDurationThreshold: 2s
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway,routes
+  endpoint:
+    health:
+      show-details: always
+  prometheus:
+    metrics:
+      export:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.eflo.gateway: DEBUG

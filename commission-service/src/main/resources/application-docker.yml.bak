@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-commission:5432/commission_db
+    username: commission_user
+    password: ${COMMISSION_DB_PASSWORD}
+
+  kafka:
+    bootstrap-servers: kafka:29092
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8180/realms/eflo
+          jwk-set-uri: http://keycloak:8180/realms/eflo/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    hostname: commission-service
+
+commission:
+  reporting:
+    export-path: /app/exports
+
+logging:
+  level:
+    com.eflo.commission: INFO
+    org.hibernate.SQL: INFO
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO

@@ -1,0 +1,555 @@
+{
+  "workflows": [
+    {
+      "name": "VN Standard Workflow",
+      "description": "Complete example of a new vehicle order workflow",
+      "processDefinition": {
+        "processCode": "VN_STANDARD",
+        "processName": "Standard New Vehicle Order Workflow",
+        "description": "Standard workflow for new vehicle orders with full approval chain",
+        "orderType": "VN",
+        "processVersion": 1,
+        "isActive": true,
+        "maxDurationDays": 90,
+        "autoProgressEnabled": true,
+        "parallelExecutionAllowed": false,
+        "configuration": {
+          "notifications": {
+            "enabled": true,
+            "channels": ["EMAIL", "IN_APP"],
+            "onStateChange": true,
+            "onTaskAssignment": true,
+            "onDeadline": true
+          },
+          "escalation": {
+            "enabled": true,
+            "autoEscalate": true
+          },
+          "businessRules": {
+            "requiresFinancing": true,
+            "requiresManagerApproval": true,
+            "requiresRegionalApproval": true
+          }
+        },
+        "states": [
+          {
+            "stateCode": "DRAFT",
+            "stateName": "Draft Order",
+            "description": "Initial draft state where salesperson creates the order",
+            "stateOrder": 1,
+            "stateType": "START",
+            "expectedDurationHours": 24,
+            "isFinalState": false,
+            "requiresApproval": false,
+            "allowSkip": false,
+            "configuration": {
+              "validations": ["customer_info", "vehicle_selection"],
+              "requiredFields": ["customerId", "vehicleModelId", "financingType"]
+            },
+            "tasks": [
+              {
+                "taskCode": "COMPLETE_ORDER_FORM",
+                "taskName": "Complete Order Form",
+                "description": "Fill in all required customer and vehicle information",
+                "taskType": "DATA_INPUT",
+                "taskOrder": 1,
+                "assignedToRole": "SALESPERSON",
+                "isMandatory": true,
+                "expectedDurationHours": 4,
+                "autoAssign": true,
+                "requiresApproval": false,
+                "formDefinition": {
+                  "fields": [
+                    {"name": "customerName", "type": "text", "required": true},
+                    {"name": "customerEmail", "type": "email", "required": true},
+                    {"name": "vehicleModel", "type": "select", "required": true},
+                    {"name": "color", "type": "select", "required": true},
+                    {"name": "options", "type": "multiselect", "required": false}
+                  ]
+                },
+                "validationRules": {
+                  "customerEmail": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$"
+                }
+              },
+              {
+                "taskCode": "UPLOAD_CUSTOMER_DOCUMENTS",
+                "taskName": "Upload Customer Documents",
+                "description": "Upload ID, proof of address, and income documents",
+                "taskType": "DOCUMENT_UPLOAD",
+                "taskOrder": 2,
+                "assignedToRole": "SALESPERSON",
+                "isMandatory": true,
+                "expectedDurationHours": 2,
+                "autoAssign": true,
+                "requiresApproval": false,
+                "configuration": {
+                  "requiredDocuments": ["ID_CARD", "PROOF_OF_ADDRESS", "INCOME_PROOF"],
+                  "allowedFormats": ["PDF", "JPG", "PNG"],
+                  "maxFileSize": "5MB"
+                }
+              }
+            ]
+          },
+          {
+            "stateCode": "VALIDATION_CDV",
+            "stateName": "Sales Manager Validation",
+            "description": "Order validation by sales manager (Chef de Vente)",
+            "stateOrder": 2,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 48,
+            "isFinalState": false,
+            "requiresApproval": true,
+            "allowSkip": false,
+            "configuration": {
+              "approverRole": "SALES_MANAGER",
+              "requiresComments": true,
+              "canReject": true,
+              "rejectionReturnsTo": "DRAFT"
+            },
+            "tasks": [
+              {
+                "taskCode": "REVIEW_ORDER_DETAILS",
+                "taskName": "Review Order Details",
+                "description": "Verify all order information is correct and complete",
+                "taskType": "VALIDATION",
+                "taskOrder": 1,
+                "assignedToRole": "SALES_MANAGER",
+                "isMandatory": true,
+                "expectedDurationHours": 24,
+                "autoAssign": true,
+                "requiresApproval": false
+              },
+              {
+                "taskCode": "VERIFY_DOCUMENTS",
+                "taskName": "Verify Customer Documents",
+                "description": "Verify authenticity and completeness of uploaded documents",
+                "taskType": "VALIDATION",
+                "taskOrder": 2,
+                "assignedToRole": "SALES_MANAGER",
+                "isMandatory": true,
+                "expectedDurationHours": 12,
+                "autoAssign": true,
+                "requiresApproval": false
+              },
+              {
+                "taskCode": "APPROVE_OR_REJECT",
+                "taskName": "Approve or Reject Order",
+                "description": "Make approval decision",
+                "taskType": "APPROVAL",
+                "taskOrder": 3,
+                "assignedToRole": "SALES_MANAGER",
+                "isMandatory": true,
+                "expectedDurationHours": 12,
+                "autoAssign": true,
+                "requiresApproval": true
+              }
+            ]
+          },
+          {
+            "stateCode": "VALIDATION_CDR",
+            "stateName": "Regional Manager Validation",
+            "description": "Order validation by regional manager (Chef de Region)",
+            "stateOrder": 3,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 48,
+            "isFinalState": false,
+            "requiresApproval": true,
+            "allowSkip": false,
+            "tasks": [
+              {
+                "taskCode": "FINAL_VALIDATION",
+                "taskName": "Final Order Validation",
+                "description": "Final validation before submitting for financing",
+                "taskType": "APPROVAL",
+                "taskOrder": 1,
+                "assignedToRole": "REGIONAL_MANAGER",
+                "isMandatory": true,
+                "expectedDurationHours": 24,
+                "autoAssign": true,
+                "requiresApproval": true
+              }
+            ]
+          },
+          {
+            "stateCode": "PENDING_FINANCING",
+            "stateName": "Pending Financing Approval",
+            "description": "Awaiting financing approval from financial institution",
+            "stateOrder": 4,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 120,
+            "isFinalState": false,
+            "requiresApproval": false,
+            "allowSkip": false,
+            "configuration": {
+              "externalSystem": "FINANCING_SERVICE",
+              "autoProgress": true,
+              "progressEvent": "financing.approved"
+            },
+            "tasks": [
+              {
+                "taskCode": "SUBMIT_FINANCING_REQUEST",
+                "taskName": "Submit Financing Request",
+                "description": "Submit financing application to financial partner",
+                "taskType": "INTEGRATION",
+                "taskOrder": 1,
+                "assignedToRole": "SYSTEM",
+                "isMandatory": true,
+                "expectedDurationHours": 1,
+                "autoAssign": true,
+                "requiresApproval": false,
+                "configuration": {
+                  "integrationEndpoint": "http://financing-service/api/applications",
+                  "autoExecute": true
+                }
+              }
+            ]
+          },
+          {
+            "stateCode": "DELIVERED",
+            "stateName": "Delivered to Customer",
+            "description": "Vehicle successfully delivered to customer",
+            "stateOrder": 10,
+            "stateType": "FINAL",
+            "expectedDurationHours": 0,
+            "isFinalState": true,
+            "requiresApproval": false,
+            "allowSkip": false,
+            "tasks": []
+          }
+        ],
+        "transitions": [
+          {
+            "fromStateCode": "DRAFT",
+            "toStateCode": "VALIDATION_CDV",
+            "transitionName": "Submit for Validation",
+            "description": "Submit completed order for sales manager validation",
+            "transitionType": "NORMAL",
+            "requiresApproval": false,
+            "requiresTasksCompletion": true,
+            "requiresDocuments": true,
+            "autoTransition": false,
+            "conditionExpression": null,
+            "notificationEnabled": true,
+            "configuration": {
+              "notifyRoles": ["SALES_MANAGER"],
+              "emailTemplate": "order_submitted_for_validation"
+            }
+          },
+          {
+            "fromStateCode": "VALIDATION_CDV",
+            "toStateCode": "VALIDATION_CDR",
+            "transitionName": "Approve and Forward to Regional Manager",
+            "description": "Sales manager approves and forwards to regional manager",
+            "transitionType": "NORMAL",
+            "requiresApproval": true,
+            "requiresTasksCompletion": true,
+            "requiresDocuments": false,
+            "autoTransition": false,
+            "conditionExpression": null,
+            "notificationEnabled": true,
+            "configuration": {
+              "approverRole": "SALES_MANAGER",
+              "notifyRoles": ["REGIONAL_MANAGER"]
+            }
+          },
+          {
+            "fromStateCode": "VALIDATION_CDV",
+            "toStateCode": "DRAFT",
+            "transitionName": "Reject and Return to Draft",
+            "description": "Sales manager rejects order and returns to salesperson",
+            "transitionType": "ROLLBACK",
+            "requiresApproval": false,
+            "requiresTasksCompletion": false,
+            "requiresDocuments": false,
+            "autoTransition": false,
+            "conditionExpression": null,
+            "notificationEnabled": true,
+            "configuration": {
+              "requiresRejectionReason": true,
+              "notifyRoles": ["SALESPERSON"]
+            }
+          },
+          {
+            "fromStateCode": "PENDING_FINANCING",
+            "toStateCode": "FINANCING_APPROVED",
+            "transitionName": "Financing Approved",
+            "description": "Automatic transition when financing is approved",
+            "transitionType": "NORMAL",
+            "requiresApproval": false,
+            "requiresTasksCompletion": true,
+            "requiresDocuments": false,
+            "autoTransition": true,
+            "conditionExpression": "context['financingStatus'] == 'APPROVED'",
+            "notificationEnabled": true,
+            "configuration": {
+              "triggerEvent": "financing.approved"
+            }
+          },
+          {
+            "fromStateCode": "DRAFT",
+            "toStateCode": "CANCELLED",
+            "transitionName": "Cancel Order",
+            "description": "Cancel the order before validation",
+            "transitionType": "CANCEL",
+            "requiresApproval": false,
+            "requiresTasksCompletion": false,
+            "requiresDocuments": false,
+            "autoTransition": false,
+            "conditionExpression": null,
+            "notificationEnabled": true,
+            "configuration": {
+              "requiresCancellationReason": true
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "VO Standard Workflow",
+      "description": "Used vehicle order workflow with inspection",
+      "processDefinition": {
+        "processCode": "VO_STANDARD",
+        "processName": "Standard Used Vehicle Order Workflow",
+        "description": "Workflow for used vehicle orders including inspection and valuation",
+        "orderType": "VO",
+        "processVersion": 1,
+        "isActive": true,
+        "maxDurationDays": 30,
+        "autoProgressEnabled": true,
+        "parallelExecutionAllowed": false,
+        "configuration": {
+          "notifications": {
+            "enabled": true,
+            "channels": ["EMAIL", "SMS"]
+          },
+          "businessRules": {
+            "requiresInspection": true,
+            "requiresValuation": true,
+            "maximumVehicleAge": 10
+          }
+        },
+        "states": [
+          {
+            "stateCode": "VEHICLE_INSPECTION",
+            "stateName": "Vehicle Technical Inspection",
+            "description": "Complete technical inspection of used vehicle",
+            "stateOrder": 2,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 48,
+            "isFinalState": false,
+            "requiresApproval": false,
+            "tasks": [
+              {
+                "taskCode": "SCHEDULE_INSPECTION",
+                "taskName": "Schedule Inspection Appointment",
+                "description": "Schedule inspection with customer",
+                "taskType": "DATA_INPUT",
+                "taskOrder": 1,
+                "assignedToRole": "SALESPERSON",
+                "isMandatory": true,
+                "expectedDurationHours": 4
+              },
+              {
+                "taskCode": "PERFORM_INSPECTION",
+                "taskName": "Perform Technical Inspection",
+                "description": "Complete 120-point inspection checklist",
+                "taskType": "MANUAL",
+                "taskOrder": 2,
+                "assignedToRole": "TECHNICIAN",
+                "isMandatory": true,
+                "expectedDurationHours": 2,
+                "formDefinition": {
+                  "checklistItems": 120,
+                  "categories": ["Engine", "Transmission", "Brakes", "Suspension", "Electrical", "Body", "Interior"]
+                }
+              },
+              {
+                "taskCode": "UPLOAD_INSPECTION_REPORT",
+                "taskName": "Upload Inspection Report",
+                "description": "Upload completed inspection report with photos",
+                "taskType": "DOCUMENT_UPLOAD",
+                "taskOrder": 3,
+                "assignedToRole": "TECHNICIAN",
+                "isMandatory": true,
+                "expectedDurationHours": 1,
+                "configuration": {
+                  "requiredDocuments": ["INSPECTION_REPORT", "VEHICLE_PHOTOS"],
+                  "minimumPhotos": 10
+                }
+              }
+            ]
+          },
+          {
+            "stateCode": "VALUATION",
+            "stateName": "Vehicle Valuation",
+            "description": "Professional valuation of the used vehicle",
+            "stateOrder": 3,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 24,
+            "isFinalState": false,
+            "requiresApproval": true,
+            "tasks": [
+              {
+                "taskCode": "PERFORM_VALUATION",
+                "taskName": "Perform Vehicle Valuation",
+                "description": "Determine market value based on inspection and market data",
+                "taskType": "VALIDATION",
+                "taskOrder": 1,
+                "assignedToRole": "VALUATION_EXPERT",
+                "isMandatory": true,
+                "expectedDurationHours": 12,
+                "configuration": {
+                  "useMarketData": true,
+                  "considerInspectionResults": true,
+                  "valuationSources": ["ARGUS", "LA_CENTRALE", "LEBONCOIN"]
+                }
+              },
+              {
+                "taskCode": "APPROVE_VALUATION",
+                "taskName": "Approve Valuation Price",
+                "description": "Manager approval of valuation price",
+                "taskType": "APPROVAL",
+                "taskOrder": 2,
+                "assignedToRole": "SALES_MANAGER",
+                "isMandatory": true,
+                "expectedDurationHours": 12,
+                "requiresApproval": true
+              }
+            ]
+          }
+        ],
+        "transitions": [
+          {
+            "fromStateCode": "DRAFT",
+            "toStateCode": "VEHICLE_INSPECTION",
+            "transitionName": "Schedule Inspection",
+            "transitionType": "NORMAL",
+            "requiresApproval": false,
+            "autoTransition": false
+          },
+          {
+            "fromStateCode": "VEHICLE_INSPECTION",
+            "toStateCode": "VALUATION",
+            "transitionName": "Proceed to Valuation",
+            "transitionType": "NORMAL",
+            "requiresApproval": false,
+            "requiresTasksCompletion": true,
+            "autoTransition": true,
+            "conditionExpression": "context['inspectionStatus'] == 'PASSED'"
+          }
+        ]
+      }
+    },
+    {
+      "name": "EVO Standard Workflow",
+      "description": "Evolution vehicle workflow with conversion planning",
+      "processDefinition": {
+        "processCode": "EVO_STANDARD",
+        "processName": "Standard Evolution Order Workflow",
+        "description": "Workflow for evolution vehicles requiring conversion work",
+        "orderType": "EVO",
+        "processVersion": 1,
+        "isActive": true,
+        "maxDurationDays": 60,
+        "autoProgressEnabled": true,
+        "configuration": {
+          "businessRules": {
+            "requiresConversionPlan": true,
+            "requiresTechnicalApproval": true,
+            "requiresQualityInspection": true
+          }
+        },
+        "states": [
+          {
+            "stateCode": "CONVERSION_PLANNING",
+            "stateName": "Conversion Planning",
+            "description": "Plan the vehicle conversion work",
+            "stateOrder": 2,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 72,
+            "requiresApproval": true,
+            "tasks": [
+              {
+                "taskCode": "CREATE_CONVERSION_PLAN",
+                "taskName": "Create Conversion Plan",
+                "description": "Detailed plan of conversion work required",
+                "taskType": "DATA_INPUT",
+                "taskOrder": 1,
+                "assignedToRole": "TECHNICIAN",
+                "isMandatory": true,
+                "expectedDurationHours": 48,
+                "formDefinition": {
+                  "fields": [
+                    {"name": "conversionType", "type": "select", "required": true},
+                    {"name": "requiredParts", "type": "multiselect", "required": true},
+                    {"name": "estimatedHours", "type": "number", "required": true},
+                    {"name": "estimatedCost", "type": "number", "required": true},
+                    {"name": "specialTools", "type": "text", "required": false}
+                  ]
+                }
+              },
+              {
+                "taskCode": "APPROVE_CONVERSION_PLAN",
+                "taskName": "Approve Conversion Plan",
+                "description": "Technical manager approval of conversion plan",
+                "taskType": "APPROVAL",
+                "taskOrder": 2,
+                "assignedToRole": "TECHNICAL_MANAGER",
+                "isMandatory": true,
+                "expectedDurationHours": 24,
+                "requiresApproval": true
+              }
+            ]
+          },
+          {
+            "stateCode": "CONVERSION_IN_PROGRESS",
+            "stateName": "Conversion Work in Progress",
+            "description": "Active conversion work on vehicle",
+            "stateOrder": 6,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 720,
+            "tasks": [
+              {
+                "taskCode": "PERFORM_CONVERSION",
+                "taskName": "Perform Conversion Work",
+                "description": "Execute the conversion plan",
+                "taskType": "MANUAL",
+                "taskOrder": 1,
+                "assignedToRole": "TECHNICIAN",
+                "isMandatory": true,
+                "expectedDurationHours": 700,
+                "configuration": {
+                  "trackProgress": true,
+                  "allowProgressUpdates": true,
+                  "requiresPhotos": true
+                }
+              }
+            ]
+          },
+          {
+            "stateCode": "QUALITY_INSPECTION",
+            "stateName": "Post-Conversion Quality Inspection",
+            "description": "Quality check after conversion completion",
+            "stateOrder": 7,
+            "stateType": "NORMAL",
+            "expectedDurationHours": 48,
+            "requiresApproval": true,
+            "tasks": [
+              {
+                "taskCode": "QUALITY_CHECK",
+                "taskName": "Perform Quality Inspection",
+                "description": "Comprehensive quality check of conversion work",
+                "taskType": "VALIDATION",
+                "taskOrder": 1,
+                "assignedToRole": "QUALITY_INSPECTOR",
+                "isMandatory": true,
+                "expectedDurationHours": 24,
+                "requiresApproval": true
+              }
+            ]
+          }
+        ]
+      }
+    }
+  ]
+}

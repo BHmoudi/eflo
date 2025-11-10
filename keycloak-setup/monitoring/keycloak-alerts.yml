@@ -1,0 +1,173 @@
+# Keycloak Alert Rules for Prometheus
+
+groups:
+  - name: keycloak_alerts
+    interval: 30s
+    rules:
+      # Keycloak service availability
+      - alert: KeycloakDown
+        expr: up{job="keycloak"} == 0
+        for: 1m
+        labels:
+          severity: critical
+          service: keycloak
+        annotations:
+          summary: "Keycloak is down"
+          description: "Keycloak service has been down for more than 1 minute. Check container status."
+
+      # High failed login rate
+      - alert: HighFailedLoginRate
+        expr: rate(keycloak_failed_login_attempts_total[5m]) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "High failed login rate detected"
+          description: "More than 10 failed login attempts per second in the last 5 minutes. Possible brute force attack."
+
+      # High response time
+      - alert: KeacloakHighResponseTime
+        expr: histogram_quantile(0.95, rate(keycloak_request_duration_seconds_bucket[5m])) > 2
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "Keycloak high response time"
+          description: "95th percentile response time is above 2 seconds for 5 minutes."
+
+      # Memory usage
+      - alert: KeycloakHighMemoryUsage
+        expr: (process_resident_memory_bytes{job="keycloak"} / 1024 / 1024 / 1024) > 2
+        for: 10m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "Keycloak high memory usage"
+          description: "Keycloak is using more than 2GB of memory for 10 minutes."
+
+      # Database connection pool exhaustion
+      - alert: DatabaseConnectionPoolExhausted
+        expr: keycloak_database_connection_pool_active > (keycloak_database_connection_pool_max * 0.9)
+        for: 5m
+        labels:
+          severity: critical
+          service: keycloak
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Database connection pool is using more than 90% of available connections."
+
+      # Active sessions threshold
+      - alert: HighActiveSessions
+        expr: keycloak_active_sessions > 1000
+        for: 10m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "High number of active sessions"
+          description: "More than 1000 active sessions for 10 minutes. Consider scaling."
+
+      # Token generation rate
+      - alert: HighTokenGenerationRate
+        expr: rate(keycloak_tokens_issued_total[5m]) > 100
+        for: 10m
+        labels:
+          severity: info
+          service: keycloak
+        annotations:
+          summary: "High token generation rate"
+          description: "More than 100 tokens per second being generated for 10 minutes."
+
+      # PostgreSQL connection issues
+      - alert: PostgresqlConnectionFailed
+        expr: up{job="postgres-keycloak"} == 0
+        for: 2m
+        labels:
+          severity: critical
+          service: postgres-keycloak
+        annotations:
+          summary: "PostgreSQL connection failed"
+          description: "Cannot connect to Keycloak PostgreSQL database."
+
+      # Database disk usage
+      - alert: PostgresqlHighDiskUsage
+        expr: (pg_database_size_bytes{datname="keycloak_db"} / 1024 / 1024 / 1024) > 10
+        for: 5m
+        labels:
+          severity: warning
+          service: postgres-keycloak
+        annotations:
+          summary: "PostgreSQL high disk usage"
+          description: "Keycloak database is using more than 10GB of disk space."
+
+      # Realm event errors
+      - alert: HighRealmEventErrors
+        expr: rate(keycloak_realm_events_errors_total[5m]) > 1
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "High realm event error rate"
+          description: "More than 1 realm event error per second for 5 minutes."
+
+      # Certificate expiration warning
+      - alert: CertificateExpirationWarning
+        expr: (keycloak_certificate_expiry_timestamp - time()) / 86400 < 30
+        for: 1h
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "Certificate expiring soon"
+          description: "Keycloak certificate will expire in less than 30 days."
+
+      # Brute force detection triggered
+      - alert: BruteForceDetectionTriggered
+        expr: increase(keycloak_brute_force_attacks_detected_total[1h]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "Multiple brute force attacks detected"
+          description: "More than 5 brute force attacks detected in the last hour."
+
+  - name: keycloak_performance
+    interval: 60s
+    rules:
+      # Login success rate
+      - alert: LowLoginSuccessRate
+        expr: (rate(keycloak_login_success_total[5m]) / (rate(keycloak_login_success_total[5m]) + rate(keycloak_login_failed_total[5m]))) < 0.8
+        for: 10m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "Low login success rate"
+          description: "Login success rate is below 80% for 10 minutes."
+
+      # User registration rate spike
+      - alert: UserRegistrationSpike
+        expr: rate(keycloak_user_registrations_total[5m]) > avg_over_time(rate(keycloak_user_registrations_total[5m])[1h:5m]) * 3
+        for: 5m
+        labels:
+          severity: info
+          service: keycloak
+        annotations:
+          summary: "User registration spike detected"
+          description: "User registration rate is 3x higher than the 1-hour average."
+
+      # Token refresh failures
+      - alert: HighTokenRefreshFailureRate
+        expr: rate(keycloak_token_refresh_failed_total[5m]) > 5
+        for: 5m
+        labels:
+          severity: warning
+          service: keycloak
+        annotations:
+          summary: "High token refresh failure rate"
+          description: "More than 5 token refresh failures per second for 5 minutes."

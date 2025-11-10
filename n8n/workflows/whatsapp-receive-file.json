@@ -1,0 +1,422 @@
+{
+  "name": "WhatsApp - Receive File from Client",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-incoming",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Twilio Incoming",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "whatsapp-incoming"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "number": [
+            {
+              "value1": "={{$json.NumMedia}}",
+              "operation": "larger",
+              "value2": 0
+            }
+          ]
+        }
+      },
+      "id": "check-has-media",
+      "name": "Check Has Media",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract media information from Twilio webhook\nconst input = $input.first().json;\n\n// Twilio sends media as MediaUrl0, MediaUrl1, etc.\nconst mediaFiles = [];\nconst numMedia = parseInt(input.NumMedia || 0);\n\nfor (let i = 0; i < numMedia; i++) {\n  const mediaUrl = input[`MediaUrl${i}`];\n  const mediaType = input[`MediaContentType${i}`];\n  \n  if (mediaUrl) {\n    mediaFiles.push({\n      url: mediaUrl,\n      contentType: mediaType,\n      index: i\n    });\n  }\n}\n\nreturn {\n  json: {\n    from: input.From.replace('whatsapp:', ''),\n    body: input.Body || '',\n    mediaFiles: mediaFiles,\n    timestamp: new Date().toISOString(),\n    messageSid: input.MessageSid\n  }\n};"
+      },
+      "id": "extract-media",
+      "name": "Extract Media Info",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 200]
+    },
+    {
+      "parameters": {
+        "url": "=http://user-service:8084/api/v1/users/by-phone/{{$json.from}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "options": {
+          "allowUnauthorizedCerts": false
+        }
+      },
+      "id": "find-user",
+      "name": "Find User by Phone",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [910, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "mediaFiles",
+        "options": {}
+      },
+      "id": "split-media",
+      "name": "Split Media Files",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [1130, 200]
+    },
+    {
+      "parameters": {
+        "url": "={{$json.mediaFiles[$json.index].url}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "twilioApi",
+        "options": {
+          "response": {
+            "response": {
+              "responseFormat": "file"
+            }
+          }
+        }
+      },
+      "id": "download-media",
+      "name": "Download Media from Twilio",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1350, 200],
+      "credentials": {
+        "twilioApi": {
+          "id": "3",
+          "name": "Twilio Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Generate file metadata\nconst mediaInfo = $json.mediaFiles[$json.index];\nconst userData = $('Find User by Phone').first().json;\nconst originalData = $('Extract Media Info').first().json;\n\n// Extract file extension from content type\nconst contentType = mediaInfo.contentType;\nlet extension = 'bin';\n\nif (contentType.includes('pdf')) extension = 'pdf';\nelse if (contentType.includes('jpeg') || contentType.includes('jpg')) extension = 'jpg';\nelse if (contentType.includes('png')) extension = 'png';\nelse if (contentType.includes('doc')) extension = 'docx';\nelse if (contentType.includes('excel') || contentType.includes('spreadsheet')) extension = 'xlsx';\n\nconst fileName = `whatsapp_${userData.id}_${Date.now()}_${mediaInfo.index}.${extension}`;\n\nreturn {\n  json: {\n    fileName: fileName,\n    contentType: contentType,\n    source: 'whatsapp',\n    uploadedBy: userData.id,\n    uploadedByPhone: originalData.from,\n    uploadedAt: originalData.timestamp,\n    messageSid: originalData.messageSid,\n    caption: originalData.body\n  },\n  binary: $input.first().binary\n};"
+      },
+      "id": "prepare-upload",
+      "name": "Prepare File Metadata",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1570, 200]
+    },
+    {
+      "parameters": {
+        "url": "=http://document-service:8083/api/v1/documents/upload",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "file",
+              "inputDataFieldName": "={{Object.keys($binary)[0]}}"
+            },
+            {
+              "name": "fileName",
+              "value": "={{$json.fileName}}"
+            },
+            {
+              "name": "source",
+              "value": "={{$json.source}}"
+            },
+            {
+              "name": "uploadedBy",
+              "value": "={{$json.uploadedBy}}"
+            },
+            {
+              "name": "metadata",
+              "value": "={{JSON.stringify({\n  uploadedByPhone: $json.uploadedByPhone,\n  uploadedAt: $json.uploadedAt,\n  messageSid: $json.messageSid,\n  caption: $json.caption\n})}}"
+            }
+          ]
+        }
+      },
+      "id": "upload-document",
+      "name": "Upload to Document Service",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1790, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/document-analysis",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "documentId",
+              "value": "={{$json.documentId}}"
+            },
+            {
+              "name": "documentUrl",
+              "value": "={{$json.documentUrl}}"
+            },
+            {
+              "name": "documentType",
+              "value": "client-upload"
+            },
+            {
+              "name": "source",
+              "value": "whatsapp"
+            }
+          ]
+        }
+      },
+      "id": "trigger-ai-analysis",
+      "name": "Trigger AI Analysis",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [2010, 200]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "combine-results",
+      "name": "Combine All Uploads",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [2230, 300]
+    },
+    {
+      "parameters": {
+        "fromNumber": "={{$env.TWILIO_WHATSAPP_NUMBER}}",
+        "toNumber": "=whatsapp:{{$('Extract Media Info').first().json.from}}",
+        "message": "=\u2705 Merci ! Nous avons bien reçu {{$json.length}} document(s).\n\nVos fichiers sont en cours de traitement et seront analysés automatiquement.\n\nVous recevrez une confirmation une fois le traitement terminé.",
+        "options": {}
+      },
+      "id": "send-confirmation",
+      "name": "Send Confirmation WhatsApp",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [2450, 300],
+      "credentials": {
+        "twilioApi": {
+          "id": "3",
+          "name": "Twilio Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK"
+      },
+      "id": "respond-twilio",
+      "name": "Respond to Twilio",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2670, 300]
+    },
+    {
+      "parameters": {
+        "fromNumber": "={{$env.TWILIO_WHATSAPP_NUMBER}}",
+        "toNumber": "=whatsapp:{{$json.from}}",
+        "message": "Pour envoyer des documents, veuillez joindre un fichier à votre message.\n\nTypes acceptés : PDF, Images (JPG, PNG), Documents Word/Excel",
+        "options": {}
+      },
+      "id": "send-help",
+      "name": "Send Help Message",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [690, 400],
+      "credentials": {
+        "twilioApi": {
+          "id": "3",
+          "name": "Twilio Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "OK"
+      },
+      "id": "respond-no-media",
+      "name": "Respond - No Media",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 400]
+    }
+  ],
+  "connections": {
+    "Webhook - Twilio Incoming": {
+      "main": [
+        [
+          {
+            "node": "Check Has Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Has Media": {
+      "main": [
+        [
+          {
+            "node": "Extract Media Info",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Help Message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Media Info": {
+      "main": [
+        [
+          {
+            "node": "Find User by Phone",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find User by Phone": {
+      "main": [
+        [
+          {
+            "node": "Split Media Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Media Files": {
+      "main": [
+        [
+          {
+            "node": "Download Media from Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Combine All Uploads",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Download Media from Twilio": {
+      "main": [
+        [
+          {
+            "node": "Prepare File Metadata",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare File Metadata": {
+      "main": [
+        [
+          {
+            "node": "Upload to Document Service",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload to Document Service": {
+      "main": [
+        [
+          {
+            "node": "Trigger AI Analysis",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Trigger AI Analysis": {
+      "main": [
+        [
+          {
+            "node": "Split Media Files",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Combine All Uploads": {
+      "main": [
+        [
+          {
+            "node": "Send Confirmation WhatsApp",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Confirmation WhatsApp": {
+      "main": [
+        [
+          {
+            "node": "Respond to Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Help Message": {
+      "main": [
+        [
+          {
+            "node": "Respond - No Media",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "any",
+    "errorWorkflow": "error-handler"
+  },
+  "staticData": null,
+  "tags": ["eflo", "whatsapp", "file-reception"],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-10T00:00:00.000Z",
+  "versionId": "1"
+}

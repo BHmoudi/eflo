@@ -1,0 +1,234 @@
+server:
+  port: 8079
+
+spring:
+  application:
+    name: external-api-gateway
+
+  cloud:
+    gateway:
+      routes:
+        # Import Routes (v1)
+        - id: external-import-v1
+          uri: lb://EXTERNAL-API-SERVICE
+          predicates:
+            - Path=/api/v1/external/import/**
+            - Method=POST
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientKeyResolver}"
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+                redis-rate-limiter.requestedTokens: 1
+            - name: RequestSize
+              args:
+                maxSize: 50MB
+            # RequestTimeout filter not available - use circuit breaker or custom filter
+            # - name: RequestTimeout
+            #   args:
+            #     timeout: 30s
+
+        # Export Routes (v1)
+        - id: external-export-v1
+          uri: lb://EXTERNAL-API-SERVICE
+          predicates:
+            - Path=/api/v1/external/export/**
+            - Method=POST,GET
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientKeyResolver}"
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+            # RequestTimeout filter not available - use circuit breaker or custom filter
+            # - name: RequestTimeout
+            #   args:
+            #     timeout: 60s
+
+        # Webhook Routes (v1)
+        - id: external-webhook-v1
+          uri: lb://EXTERNAL-API-SERVICE
+          predicates:
+            - Path=/api/v1/external/webhook/**
+            - Method=POST,GET,PUT,DELETE
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientKeyResolver}"
+                redis-rate-limiter.replenishRate: 20
+                redis-rate-limiter.burstCapacity: 40
+
+        # Version 2 Routes (Future)
+        - id: external-import-v2
+          uri: lb://EXTERNAL-API-SERVICE-V2
+          predicates:
+            - Path=/api/v2/external/import/**
+            - Method=POST
+          filters:
+            - name: RequestRateLimiter
+              args:
+                key-resolver: "#{@clientKeyResolver}"
+                redis-rate-limiter.replenishRate: 5
+                redis-rate-limiter.burstCapacity: 10
+
+      globalcors:
+        cors-configurations:
+          '[/api/v1/external/webhook/**]':
+            allowedOrigins:
+              - "https://partner1.example.com"
+              - "https://partner2.example.com"
+              - "https://partner3.example.com"
+            allowedMethods:
+              - POST
+              - GET
+              - PUT
+              - DELETE
+            allowedHeaders:
+              - Authorization
+              - Content-Type
+              - X-Webhook-Signature
+              - X-API-Key
+              - X-Client-Version
+            maxAge: 3600
+
+      default-filters:
+        - name: AddRequestHeader
+          args:
+            name: X-Gateway
+            value: External-Gateway
+        # Note: X-Request-Id should be added via a custom filter for dynamic UUID generation
+        # - name: AddRequestHeader
+        #   args:
+        #     name: X-Request-Id
+        #     value: "#{T(java.util.UUID).randomUUID().toString()}"
+        - name: AddResponseHeader
+          args:
+            name: X-RateLimit-Limit
+            value: "100"
+        - name: AddResponseHeader
+          args:
+            name: X-API-Version
+            value: "1.0"
+        # Note: X-Gateway-Timestamp should be added via a custom filter for dynamic timestamp generation
+        # - name: AddResponseHeader
+        #   args:
+        #     name: X-Gateway-Timestamp
+        #     value: "#{T(java.time.Instant).now()}"
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      password: ${REDIS_PASSWORD:redis123}
+      timeout: 2000ms
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: http://localhost:8180/realms/eflo/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
+    lease-renewal-interval-in-seconds: 30
+
+# Custom configuration for external clients
+eflo:
+  external-gateway:
+    ip-whitelist:
+      enabled: true
+      clients:
+        client-partner1:
+          ips:
+            - "203.0.113.10"
+            - "203.0.113.11"
+            - "203.0.113.12"
+        client-partner2:
+          ips:
+            - "198.51.100.20"
+            - "198.51.100.21"
+        client-partner3:
+          ips:
+            - "192.0.2.30"
+            - "192.0.2.31"
+
+    rate-limits:
+      default:
+        requests-per-hour: 100
+        requests-per-day: 2000
+        burst-capacity: 20
+      client-partner1:
+        requests-per-hour: 500
+        requests-per-day: 10000
+        burst-capacity: 100
+      client-partner2:
+        requests-per-hour: 200
+        requests-per-day: 5000
+        burst-capacity: 50
+      client-partner3:
+        requests-per-hour: 1000
+        requests-per-day: 20000
+        burst-capacity: 200
+
+    validation:
+      max-payload-size: 50MB
+      enforce-content-type: true
+      required-headers:
+        - Authorization
+        - Content-Type
+      allowed-content-types:
+        - application/json
+        - application/xml
+        - multipart/form-data
+
+    audit:
+      enabled: true
+      log-full-payload: true
+      payload-size-limit: 1048576
+      retention-days: 365
+      log-level: INFO
+      include-headers: true
+      include-response-body: false
+
+    webhook:
+      enabled: true
+      signature-validation: true
+      retry-attempts: 3
+      retry-delay: 5000
+      timeout: 30000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,gateway,routes,filters,prometheus
+  endpoint:
+    health:
+      show-details: always
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    com.eflo.external.gateway: DEBUG
+    org.springframework.security: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /var/log/eflo/external-gateway.log
+    max-size: 100MB
+    max-history: 30

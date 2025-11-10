@@ -1,0 +1,170 @@
+package com.eflo.${SERVICE_NAME}.config;
+
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.convert.converter.Converter;
+import org.springframework.security.authentication.AbstractAuthenticationToken;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtDecoders;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.authentication.JwtGrantedAuthoritiesConverter;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.beans.factory.annotation.Value;
+
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
+
+/**
+ * Security Configuration for Eflo Microservices
+ *
+ * This configuration enables OAuth2 Resource Server with JWT token validation
+ * and role-based access control using Keycloak.
+ *
+ * Features:
+ * - JWT token validation
+ * - Role extraction from Keycloak realm_access
+ * - Method-level security annotations
+ * - Actuator endpoints security
+ * - Custom authorization rules
+ */
+@Configuration
+@EnableWebSecurity
+@EnableMethodSecurity(prePostEnabled = true, securedEnabled = true)
+public class SecurityConfig {
+
+    @Value("${spring.security.oauth2.resourceserver.jwt.issuer-uri}")
+    private String issuerUri;
+
+    /**
+     * Configure HTTP security with OAuth2 Resource Server
+     */
+    @Bean
+    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        http
+            .csrf(csrf -> csrf.disable())
+            .sessionManagement(session ->
+                session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+            )
+            .authorizeHttpRequests(auth -> auth
+                // Public endpoints
+                .requestMatchers("/actuator/health/**", "/actuator/info").permitAll()
+                .requestMatchers("/api/public/**").permitAll()
+                .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
+
+                // Admin endpoints - SUPER_ADMIN only
+                .requestMatchers("/api/admin/**").hasRole("SUPER_ADMIN")
+                .requestMatchers("/actuator/**").hasRole("SUPER_ADMIN")
+
+                // Service-specific endpoints
+                .requestMatchers("/api/sales/**").hasAnyRole("SALES_MANAGER", "SALESPERSON", "SUPER_ADMIN")
+                .requestMatchers("/api/finance/**").hasAnyRole("ACCOUNTANT", "SUPER_ADMIN")
+                .requestMatchers("/api/documents/**").hasAnyRole("DOCUMENT_MANAGER", "SECRETARY", "SUPER_ADMIN")
+
+                // All other endpoints require authentication
+                .anyRequest().authenticated()
+            )
+            .oauth2ResourceServer(oauth2 -> oauth2
+                .jwt(jwt -> jwt
+                    .jwtAuthenticationConverter(jwtAuthenticationConverter())
+                )
+            );
+
+        return http.build();
+    }
+
+    /**
+     * JWT Decoder Bean
+     */
+    @Bean
+    public JwtDecoder jwtDecoder() {
+        return JwtDecoders.fromIssuerLocation(issuerUri);
+    }
+
+    /**
+     * JWT Authentication Converter
+     * Extracts roles from Keycloak realm_access claim
+     */
+    @Bean
+    public JwtAuthenticationConverter jwtAuthenticationConverter() {
+        JwtAuthenticationConverter converter = new JwtAuthenticationConverter();
+        converter.setJwtGrantedAuthoritiesConverter(jwtGrantedAuthoritiesConverter());
+        converter.setPrincipalClaimName("preferred_username");
+        return converter;
+    }
+
+    /**
+     * Custom JWT Granted Authorities Converter
+     * Extracts roles from both realm_access and resource_access
+     */
+    @Bean
+    public Converter<Jwt, Collection<GrantedAuthority>> jwtGrantedAuthoritiesConverter() {
+        return jwt -> {
+            // Extract realm roles
+            Collection<GrantedAuthority> realmRoles = extractRealmRoles(jwt);
+
+            // Extract resource roles (optional)
+            Collection<GrantedAuthority> resourceRoles = extractResourceRoles(jwt);
+
+            // Combine all roles
+            return Stream.concat(realmRoles.stream(), resourceRoles.stream())
+                    .collect(Collectors.toList());
+        };
+    }
+
+    /**
+     * Extract realm roles from JWT token
+     */
+    private Collection<GrantedAuthority> extractRealmRoles(Jwt jwt) {
+        Map<String, Object> realmAccess = jwt.getClaim("realm_access");
+
+        if (realmAccess != null && realmAccess.containsKey("roles")) {
+            @SuppressWarnings("unchecked")
+            List<String> roles = (List<String>) realmAccess.get("roles");
+
+            return roles.stream()
+                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role))
+                    .collect(Collectors.toList());
+        }
+
+        return List.of();
+    }
+
+    /**
+     * Extract resource roles from JWT token
+     */
+    private Collection<GrantedAuthority> extractResourceRoles(Jwt jwt) {
+        Map<String, Object> resourceAccess = jwt.getClaim("resource_access");
+
+        if (resourceAccess != null) {
+            return resourceAccess.entrySet().stream()
+                    .filter(entry -> entry.getValue() instanceof Map)
+                    .flatMap(entry -> {
+                        @SuppressWarnings("unchecked")
+                        Map<String, Object> resource = (Map<String, Object>) entry.getValue();
+
+                        if (resource.containsKey("roles")) {
+                            @SuppressWarnings("unchecked")
+                            List<String> roles = (List<String>) resource.get("roles");
+
+                            return roles.stream()
+                                    .map(role -> new SimpleGrantedAuthority("ROLE_" + role));
+                        }
+
+                        return Stream.empty();
+                    })
+                    .collect(Collectors.toList());
+        }
+
+        return List.of();
+    }
+}

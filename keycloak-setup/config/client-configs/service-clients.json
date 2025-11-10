@@ -1,0 +1,75 @@
+{
+  "clientId": "eflo-microservices",
+  "name": "Eflo Microservices Client",
+  "description": "Service account for microservice-to-microservice authentication",
+  "enabled": true,
+  "alwaysDisplayInConsole": false,
+  "clientAuthenticatorType": "client-secret",
+  "secret": "${WEB_APP_CLIENT_SECRET}",
+  "publicClient": false,
+  "bearerOnly": false,
+  "standardFlowEnabled": false,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": false,
+  "serviceAccountsEnabled": true,
+  "authorizationServicesEnabled": false,
+  "protocol": "openid-connect",
+  "frontchannelLogout": false,
+  "attributes": {
+    "access.token.lifespan": "3600",
+    "client.secret.creation.time": "1704067200",
+    "use.refresh.tokens": "true",
+    "client_credentials.use_refresh_token": "false",
+    "token.endpoint.auth.signing.alg": "RS256"
+  },
+  "fullScopeAllowed": false,
+  "nodeReRegistrationTimeout": -1,
+  "defaultClientScopes": [
+    "roles"
+  ],
+  "optionalClientScopes": [
+    "microprofile-jwt"
+  ],
+  "protocolMappers": [
+    {
+      "name": "service-client-id",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usersessionmodel-note-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.session.note": "clientId",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "clientId",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "service-host",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usersessionmodel-note-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.session.note": "clientHost",
+        "id.token.claim": "false",
+        "access.token.claim": "true",
+        "claim.name": "clientHost",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "audience-microservices",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "eflo-microservices",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ],
+  "serviceAccountRoles": {
+    "realmRoles": ["EXTERNAL_API_READ", "EXTERNAL_API_WRITE"]
+  }
+}

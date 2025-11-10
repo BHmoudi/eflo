@@ -1,0 +1,85 @@
+# ═══════════════════════════════════════════════════════════════════
+# n8n Integration Configuration for Workflow Service
+# ═══════════════════════════════════════════════════════════════════
+#
+# This configuration enables integration with n8n workflow automation
+# platform for AI document analysis, WhatsApp messaging, and task validation.
+#
+# Usage:
+#   Add to SPRING_PROFILES_ACTIVE: docker,n8n
+#
+# ═══════════════════════════════════════════════════════════════════
+
+n8n:
+  # Enable/disable n8n integration
+  enabled: true
+
+  # n8n Base URL (Docker service name)
+  base-url: ${N8N_BASE_URL:http://n8n:5678}
+
+  # Webhook secret for secure communication
+  webhook-secret: ${N8N_WEBHOOK_SECRET:}
+
+  # Request timeout (milliseconds)
+  timeout: 30000
+
+  # Workflow webhook paths
+  workflows:
+    document-analysis: /webhook/document-analysis
+    whatsapp-send: /webhook/whatsapp-send
+    whatsapp-receive: /webhook/whatsapp-incoming
+    task-validation: /webhook/task-validation
+    file-reception: /webhook/file-reception
+    multi-channel-notification: /webhook/multi-channel-notification
+
+  # AI Document Analysis Configuration
+  ai:
+    enabled: true
+    # Auto-trigger analysis for these document types
+    auto-analyze-types:
+      - INVOICE
+      - CONTRACT
+      - ID_CARD
+      - PASSPORT
+      - DELIVERY_NOTE
+
+  # WhatsApp Integration Configuration
+  whatsapp:
+    enabled: true
+    # Auto-send notifications via WhatsApp if user has it enabled
+    auto-notify:
+      - TASK_ASSIGNED
+      - TASK_OVERDUE
+      - APPROVAL_REQUIRED
+      - WORKFLOW_COMPLETED
+
+  # Task Validation Configuration
+  validation:
+    enabled: true
+    # Validate these fields automatically
+    validate-fields:
+      - postalCode
+      - vatNumber
+      - iban
+      - email
+
+  # Retry configuration for failed webhook calls
+  retry:
+    enabled: true
+    max-attempts: 3
+    backoff-delay: 2000  # milliseconds
+
+  # Circuit breaker configuration
+  circuit-breaker:
+    enabled: true
+    failure-threshold: 5
+    timeout: 60000  # milliseconds
+
+# ═══════════════════════════════════════════════════════════════════
+# Logging Configuration for n8n Integration
+# ═══════════════════════════════════════════════════════════════════
+
+logging:
+  level:
+    com.eflo.workflow.integration.N8nClient: INFO
+    com.eflo.workflow.web.N8nWebhookController: INFO

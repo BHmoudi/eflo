@@ -1,0 +1,179 @@
+{
+  "clientId": "eflo-api-gateway",
+  "name": "Eflo API Gateway",
+  "description": "Backend API gateway for service-to-service authentication and authorization",
+  "enabled": true,
+  "alwaysDisplayInConsole": false,
+  "clientAuthenticatorType": "client-secret",
+  "secret": "${GATEWAY_CLIENT_SECRET}",
+  "publicClient": false,
+  "bearerOnly": false,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": true,
+  "serviceAccountsEnabled": true,
+  "authorizationServicesEnabled": true,
+  "protocol": "openid-connect",
+  "frontchannelLogout": false,
+  "attributes": {
+    "access.token.lifespan": "3600",
+    "client.secret.creation.time": "1704067200",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false",
+    "oauth2.device.authorization.grant.enabled": "false",
+    "oidc.ciba.grant.enabled": "false",
+    "use.refresh.tokens": "true",
+    "token.endpoint.auth.signing.alg": "RS256"
+  },
+  "fullScopeAllowed": true,
+  "nodeReRegistrationTimeout": -1,
+  "defaultClientScopes": [
+    "web-origins",
+    "profile",
+    "roles"
+  ],
+  "optionalClientScopes": [
+    "email",
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "protocolMappers": [
+    {
+      "name": "service-account-mapper",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usersessionmodel-note-mapper",
+      "consentRequired": false,
+      "config": {
+        "user.session.note": "clientId",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "clientId",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "audience-gateway",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "eflo-api-gateway",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ],
+  "authorizationSettings": {
+    "allowRemoteResourceManagement": true,
+    "policyEnforcementMode": "ENFORCING",
+    "decisionStrategy": "UNANIMOUS",
+    "resources": [
+      {
+        "name": "Admin Resources",
+        "type": "urn:eflo-api-gateway:resources:admin",
+        "ownerManagedAccess": false,
+        "displayName": "Administrative Resources",
+        "uris": ["/api/admin/*"],
+        "scopes": [
+          {"name": "admin:read"},
+          {"name": "admin:write"},
+          {"name": "admin:delete"}
+        ]
+      },
+      {
+        "name": "Sales Resources",
+        "type": "urn:eflo-api-gateway:resources:sales",
+        "ownerManagedAccess": false,
+        "displayName": "Sales Resources",
+        "uris": ["/api/sales/*", "/api/quotes/*"],
+        "scopes": [
+          {"name": "sales:read"},
+          {"name": "sales:write"},
+          {"name": "sales:approve"}
+        ]
+      },
+      {
+        "name": "Finance Resources",
+        "type": "urn:eflo-api-gateway:resources:finance",
+        "ownerManagedAccess": false,
+        "displayName": "Finance Resources",
+        "uris": ["/api/finance/*", "/api/payments/*"],
+        "scopes": [
+          {"name": "finance:read"},
+          {"name": "finance:write"}
+        ]
+      }
+    ],
+    "policies": [
+      {
+        "name": "Super Admin Policy",
+        "type": "role",
+        "logic": "POSITIVE",
+        "decisionStrategy": "UNANIMOUS",
+        "config": {
+          "roles": "[{\"id\":\"SUPER_ADMIN\",\"required\":true}]"
+        }
+      },
+      {
+        "name": "Sales Manager Policy",
+        "type": "role",
+        "logic": "POSITIVE",
+        "decisionStrategy": "UNANIMOUS",
+        "config": {
+          "roles": "[{\"id\":\"SALES_MANAGER\",\"required\":false},{\"id\":\"SUPER_ADMIN\",\"required\":false}]"
+        }
+      },
+      {
+        "name": "Accountant Policy",
+        "type": "role",
+        "logic": "POSITIVE",
+        "decisionStrategy": "UNANIMOUS",
+        "config": {
+          "roles": "[{\"id\":\"ACCOUNTANT\",\"required\":false},{\"id\":\"SUPER_ADMIN\",\"required\":false}]"
+        }
+      },
+      {
+        "name": "Admin Resource Permission",
+        "type": "resource",
+        "logic": "POSITIVE",
+        "decisionStrategy": "UNANIMOUS",
+        "config": {
+          "resources": "[\"Admin Resources\"]",
+          "applyPolicies": "[\"Super Admin Policy\"]"
+        }
+      },
+      {
+        "name": "Sales Resource Permission",
+        "type": "resource",
+        "logic": "POSITIVE",
+        "decisionStrategy": "AFFIRMATIVE",
+        "config": {
+          "resources": "[\"Sales Resources\"]",
+          "applyPolicies": "[\"Sales Manager Policy\",\"Super Admin Policy\"]"
+        }
+      },
+      {
+        "name": "Finance Resource Permission",
+        "type": "resource",
+        "logic": "POSITIVE",
+        "decisionStrategy": "AFFIRMATIVE",
+        "config": {
+          "resources": "[\"Finance Resources\"]",
+          "applyPolicies": "[\"Accountant Policy\",\"Super Admin Policy\"]"
+        }
+      }
+    ],
+    "scopes": [
+      {"name": "admin:read"},
+      {"name": "admin:write"},
+      {"name": "admin:delete"},
+      {"name": "sales:read"},
+      {"name": "sales:write"},
+      {"name": "sales:approve"},
+      {"name": "finance:read"},
+      {"name": "finance:write"}
+    ]
+  }
+}

@@ -1,0 +1,144 @@
+'use client';
+
+import { useState } from 'react';
+import Link from 'next/link';
+import toast from 'react-hot-toast';
+import { useTranslation } from '@/hooks/useTranslation';
+import { Lock, Mail, Sparkles, Workflow, Car, Brain, Zap, ArrowRight, Users, BarChart, Shield } from 'lucide-react';
+
+// EXAMPLE: How to use translations in the login page
+// Replace the existing login page with this to enable translations
+
+export default function LoginPageTranslated() {
+  const { t } = useTranslation();
+  const [loading, setLoading] = useState(false);
+  const [credentials, setCredentials] = useState({
+    username: '',
+    password: ''
+  });
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(credentials),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        localStorage.setItem('authToken', data.access_token);
+        if (data.refresh_token) {
+          localStorage.setItem('refreshToken', data.refresh_token);
+        }
+
+        toast.success(t('auth.loginSuccess'));
+        setTimeout(() => {
+          window.location.href = '/dashboard';
+        }, 500);
+      } else {
+        toast.error(t('auth.loginError'));
+      }
+    } catch (error) {
+      toast.error('Connection error');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex">
+      {/* Left Side */}
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-blue-600 via-purple-600 to-indigo-700 p-12 flex-col justify-between relative overflow-hidden">
+        {/* Branding */}
+        <div className="relative z-10">
+          <h1 className="text-4xl font-bold text-white">{t('common.appName')}</h1>
+          <p className="text-blue-100 text-sm">{t('common.appTagline')}</p>
+        </div>
+
+        {/* Content */}
+        <div className="relative z-10">
+          <h2 className="text-5xl font-bold text-white mb-4">{t('hero.titleLine1')}<br/>{t('hero.titleLine2')}<br/>{t('hero.titleLine3')}</h2>
+
+          {/* Feature Cards */}
+          <div className="grid grid-cols-2 gap-4 mt-8">
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
+              <Brain className="w-8 h-8 text-white mb-2" />
+              <h3 className="text-white font-semibold">{t('features.aiIntelligence')}</h3>
+              <p className="text-blue-100 text-xs">{t('features.aiIntelligenceDesc')}</p>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-xl p-4">
+              <Car className="w-8 h-8 text-white mb-2" />
+              <h3 className="text-white font-semibold">{t('features.vehicleOrders')}</h3>
+              <p className="text-blue-100 text-xs">{t('features.vehicleOrdersDesc')}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Footer */}
+        <div className="relative z-10 text-blue-100 text-sm">
+          <p>{t('footer.copyright')}</p>
+        </div>
+      </div>
+
+      {/* Right Side */}
+      <div className="w-full lg:w-1/2 flex items-center justify-center p-8">
+        <div className="w-full max-w-md">
+          <h2 className="text-3xl font-bold mb-2">{t('auth.welcomeBack')}</h2>
+          <p className="text-gray-600 mb-8">{t('auth.signInSubtitle')}</p>
+
+          <form onSubmit={handleLogin} className="space-y-6">
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                {t('auth.email')}
+              </label>
+              <input
+                type="text"
+                value={credentials.username}
+                onChange={(e) => setCredentials({ ...credentials, username: e.target.value })}
+                className="w-full px-3 py-3 border rounded-xl"
+                placeholder={t('auth.emailPlaceholder')}
+                required
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium mb-2">
+                {t('auth.password')}
+              </label>
+              <input
+                type="password"
+                value={credentials.password}
+                onChange={(e) => setCredentials({ ...credentials, password: e.target.value })}
+                className="w-full px-3 py-3 border rounded-xl"
+                placeholder={t('auth.passwordPlaceholder')}
+                required
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <label className="flex items-center">
+                <input type="checkbox" className="mr-2" />
+                <span className="text-sm">{t('auth.rememberMe')}</span>
+              </label>
+              <Link href="/reset-password" className="text-sm text-blue-600">
+                {t('auth.forgotPassword')}
+              </Link>
+            </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-xl"
+            >
+              {loading ? t('auth.signingIn') : t('auth.signIn')}
+            </button>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}

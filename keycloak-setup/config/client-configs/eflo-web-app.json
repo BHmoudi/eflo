@@ -1,0 +1,149 @@
+{
+  "clientId": "eflo-web-app",
+  "name": "Eflo Web Application",
+  "description": "Main web application client for Eflo platform - Public client for SPA",
+  "enabled": true,
+  "alwaysDisplayInConsole": false,
+  "clientAuthenticatorType": "client-secret",
+  "redirectUris": [
+    "http://localhost:3000/*",
+    "http://localhost:3001/*",
+    "https://eflo.app/*",
+    "https://*.eflo.app/*",
+    "https://app.eflo.com/*"
+  ],
+  "webOrigins": [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "https://eflo.app",
+    "https://*.eflo.app",
+    "https://app.eflo.com"
+  ],
+  "publicClient": true,
+  "standardFlowEnabled": true,
+  "implicitFlowEnabled": false,
+  "directAccessGrantsEnabled": true,
+  "serviceAccountsEnabled": false,
+  "authorizationServicesEnabled": false,
+  "protocol": "openid-connect",
+  "frontchannelLogout": true,
+  "attributes": {
+    "access.token.lifespan": "1800",
+    "client.secret.creation.time": "1704067200",
+    "backchannel.logout.session.required": "true",
+    "backchannel.logout.revoke.offline.tokens": "false",
+    "pkce.code.challenge.method": "S256",
+    "post.logout.redirect.uris": "+"
+  },
+  "fullScopeAllowed": true,
+  "nodeReRegistrationTimeout": -1,
+  "defaultClientScopes": [
+    "web-origins",
+    "profile",
+    "roles",
+    "email"
+  ],
+  "optionalClientScopes": [
+    "address",
+    "phone",
+    "offline_access",
+    "microprofile-jwt"
+  ],
+  "protocolMappers": [
+    {
+      "name": "employeeNumber",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "userinfo.token.claim": "true",
+        "user.attribute": "employeeNumber",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "employeeNumber",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "businessUnitIds",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "userinfo.token.claim": "true",
+        "user.attribute": "businessUnitIds",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "businessUnitIds",
+        "jsonType.label": "JSON"
+      }
+    },
+    {
+      "name": "salesmanagerIds",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "userinfo.token.claim": "true",
+        "user.attribute": "salesmanagerIds",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "salesmanagerIds",
+        "jsonType.label": "JSON"
+      }
+    },
+    {
+      "name": "region",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "userinfo.token.claim": "true",
+        "user.attribute": "region",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "region",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "department",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-attribute-mapper",
+      "consentRequired": false,
+      "config": {
+        "userinfo.token.claim": "true",
+        "user.attribute": "department",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "department",
+        "jsonType.label": "String"
+      }
+    },
+    {
+      "name": "roles",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-usermodel-realm-role-mapper",
+      "consentRequired": false,
+      "config": {
+        "userinfo.token.claim": "true",
+        "id.token.claim": "true",
+        "access.token.claim": "true",
+        "claim.name": "roles",
+        "jsonType.label": "String",
+        "multivalued": "true"
+      }
+    },
+    {
+      "name": "audience-mapper",
+      "protocol": "openid-connect",
+      "protocolMapper": "oidc-audience-mapper",
+      "consentRequired": false,
+      "config": {
+        "included.client.audience": "eflo-web-app",
+        "id.token.claim": "false",
+        "access.token.claim": "true"
+      }
+    }
+  ]
+}

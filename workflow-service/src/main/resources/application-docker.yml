@@ -1,0 +1,91 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-workflow:5432/workflow_db
+    username: workflow_user
+    password: ${WORKFLOW_DB_PASSWORD}
+
+  jpa:
+    hibernate:
+      ddl-auto: none
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: false
+
+  kafka:
+    bootstrap-servers: kafka:29092
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          jwk-set-uri: ${SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI:http://keycloak:8180/realms/eflo/protocol/openid-connect/certs}
+
+eureka:
+  client:
+    serviceUrl:
+      defaultZone: http://eureka-server:8761/eureka
+  instance:
+    hostname: workflow-service
+    prefer-ip-address: true
+
+eflo:
+  workflow:
+    # Workflow execution configuration
+    execution:
+      enabled: true
+      async: true
+      thread-pool-size: 10
+      max-queue-capacity: 100
+
+    # Task assignment configuration
+    assignment:
+      auto-assign: true
+      load-balancing: true
+      prefer-least-busy-user: true
+
+    # Notification configuration
+    notifications:
+      enabled: true
+      email:
+        enabled: true
+        from: noreply@eflo.com
+        from-name: E-FLO Workflow System
+      sms:
+        enabled: false
+        provider: twilio
+      in-app:
+        enabled: true
+      push:
+        enabled: false
+
+    # SLA monitoring configuration
+    sla:
+      monitoring-enabled: true
+      check-interval-minutes: 15
+      breach-notification-enabled: true
+      escalation-on-breach: true
+
+    # Escalation configuration
+    escalation:
+      enabled: true
+      check-interval-minutes: 30
+      auto-escalate: true
+      escalation-levels: 3
+
+    # Integration configuration
+    integration:
+      order-service:
+        url: http://order-service:8083
+      document-service:
+        url: http://document-service:8087
+      user-service:
+        url: http://user-service:8082
+
+logging:
+  level:
+    com.eflo.workflow: DEBUG
+    com.eflo.workflow.service: INFO
+    com.eflo.workflow.web: DEBUG
+    org.hibernate.SQL: INFO
+    org.springframework.kafka: INFO

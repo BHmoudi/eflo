@@ -1,0 +1,209 @@
+spring:
+  application:
+    name: document-service-test
+
+  # Test Database Configuration
+  datasource:
+    driver-class-name: org.postgresql.Driver
+    # These will be overridden by Testcontainers
+    url: jdbc:postgresql://localhost:5432/testdb
+    username: test
+    password: test
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 10000
+      idle-timeout: 300000
+
+  # JPA Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 20
+          fetch_size: 50
+        order_inserts: true
+        order_updates: true
+
+  # Flyway Configuration
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    clean-disabled: false
+    locations: classpath:db/migration
+
+  # Kafka Configuration - Embedded for tests
+  kafka:
+    bootstrap-servers: localhost:9092
+    consumer:
+      group-id: document-service-test
+      auto-offset-reset: earliest
+      enable-auto-commit: false
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "*"
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+    topics:
+      document-events: document-events-test
+      document-validation: document-validation-test
+      document-notifications: document-notifications-test
+
+  # Disable Cloud Config for tests
+  cloud:
+    config:
+      enabled: false
+      discovery:
+        enabled: false
+
+  # Disable Eureka for tests
+  eureka:
+    client:
+      enabled: false
+      register-with-eureka: false
+      fetch-registry: false
+
+  # Servlet Configuration
+  servlet:
+    multipart:
+      max-file-size: 100MB
+      max-request-size: 110MB
+      enabled: true
+
+  # Security Configuration (Disabled for most tests)
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8080/auth/realms/test
+
+# MinIO Configuration - Will be overridden by Testcontainers
+minio:
+  url: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket-name: test-documents
+  auto-create-bucket: true
+  connect-timeout: 5000
+  write-timeout: 5000
+  read-timeout: 5000
+
+# File Upload Configuration
+file:
+  upload:
+    max-size-mb: 50
+    allowed-extensions:
+      - pdf
+      - jpg
+      - jpeg
+      - png
+      - gif
+      - doc
+      - docx
+      - xls
+      - xlsx
+      - txt
+      - zip
+    temp-directory: ${java.io.tmpdir}/document-service-test
+    cleanup-temp-files: true
+    cleanup-age-hours: 1
+
+# ClamAV Configuration - Will be overridden by Testcontainers
+clamav:
+  host: localhost
+  port: 3310
+  timeout: 10000
+  enabled: true
+  scan-async: false
+  max-file-size: 52428800
+
+# Document Configuration
+document:
+  default-expiration-warning-days: 30
+  archive-after-days: 365
+  auto-archive-enabled: false
+  max-versions-per-document: 10
+  enable-virus-scan: true
+  enable-metadata-extraction: true
+  thumbnail:
+    enabled: false
+    max-width: 200
+    max-height: 200
+  storage:
+    retention-days: 90
+    archive-bucket: test-archive
+
+# Resilience4j Circuit Breaker (Disabled for tests)
+resilience4j:
+  circuitbreaker:
+    instances:
+      orderService:
+        enabled: false
+      workflowService:
+        enabled: false
+      userService:
+        enabled: false
+
+# Feign Configuration
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 1000
+        readTimeout: 2000
+        loggerLevel: full
+  circuitbreaker:
+    enabled: false
+
+# Actuator Configuration
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: false
+
+# Logging Configuration
+logging:
+  level:
+    root: INFO
+    com.eflo.document: DEBUG
+    org.springframework.web: INFO
+    org.springframework.security: INFO
+    org.springframework.kafka: WARN
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.flywaydb: INFO
+    io.minio: INFO
+    org.testcontainers: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# Test-specific properties
+test:
+  data:
+    cleanup-enabled: true
+    seed-data-enabled: false
+  containers:
+    reuse-enabled: true
+    cleanup-after-test: false
+  performance:
+    enabled: false
+    sample-size: 100
+  mock:
+    external-services: true

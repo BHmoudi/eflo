@@ -1,0 +1,101 @@
+# =====================================================
+# Eureka Server - Production Profile
+# =====================================================
+# This configuration is used for production environment
+# Run with: --spring.profiles.active=prod
+# =====================================================
+
+server:
+  port: 8761
+  # Enable compression for better performance
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+eureka:
+  client:
+    # For high availability, set to true and configure peer instances
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      # In production with HA setup, include all peer URLs
+      # defaultZone: http://eureka-server-1:8761/eureka/,http://eureka-server-2:8761/eureka/
+      defaultZone: http://eureka-server:8761/eureka/
+
+  server:
+    # Enable self-preservation to prevent mass de-registration during network issues
+    enable-self-preservation: true
+
+    # Standard eviction interval for production
+    eviction-interval-timer-in-ms: 60000
+
+    # Renewal threshold for self-preservation mode
+    renewal-percent-threshold: 0.85
+
+    # Response cache configuration for production
+    response-cache-update-interval-ms: 30000
+    response-cache-auto-expiration-in-seconds: 180
+
+    # Peer replication settings
+    peer-eureka-nodes-update-interval-ms: 600000
+    peer-eureka-status-refresh-time-interval-ms: 30000
+
+    # Synchronization settings
+    number-of-replication-retries: 3
+    max-time-for-replication: 30000
+
+  instance:
+    # In production, use actual hostname or IP
+    hostname: eureka-server
+    prefer-ip-address: true
+
+    # Production heartbeat settings
+    lease-renewal-interval-in-seconds: 30
+    lease-expiration-duration-in-seconds: 90
+
+    # Instance metadata for production monitoring
+    metadata-map:
+      environment: production
+      version: 1.0.0
+      zone: primary
+
+# =====================================================
+# Actuator - Production Settings
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Limited endpoints exposure for security
+        include: health,info,metrics,prometheus
+
+  endpoint:
+    health:
+      # Don't expose detailed health info in production
+      show-details: when-authorized
+
+  # Metrics configuration
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+      environment: production
+
+# =====================================================
+# Logging - Production Settings
+# =====================================================
+logging:
+  level:
+    root: WARN
+    com.eflo: INFO
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: /var/log/eureka-server/eureka-server.log
+    max-size: 10MB
+    max-history: 30
+    total-size-cap: 1GB

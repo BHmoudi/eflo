@@ -1,0 +1,527 @@
+{
+  "realm": "eflo",
+  "displayName": "Eflo Application",
+  "displayNameHtml": "<div class=\"kc-logo-text\"><span>Eflo</span></div>",
+  "enabled": true,
+  "sslRequired": "none",
+  "registrationAllowed": false,
+  "registrationEmailAsUsername": true,
+  "rememberMe": true,
+  "verifyEmail": true,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 5,
+  "passwordPolicy": "",
+  "accessTokenLifespan": 1800,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "ssoSessionIdleTimeoutRememberMe": 0,
+  "ssoSessionMaxLifespanRememberMe": 0,
+  "offlineSessionIdleTimeout": 2592000,
+  "offlineSessionMaxLifespanEnabled": false,
+  "offlineSessionMaxLifespan": 5184000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "actionTokenGeneratedByAdminLifespan": 43200,
+  "actionTokenGeneratedByUserLifespan": 300,
+  "defaultSignatureAlgorithm": "RS256",
+  "revokeRefreshToken": false,
+  "refreshTokenMaxReuse": 0,
+  "internationalizationEnabled": true,
+  "supportedLocales": ["en", "fr"],
+  "defaultLocale": "en",
+  "eventsEnabled": true,
+  "eventsExpiration": 259200,
+  "eventsListeners": ["jboss-logging"],
+  "enabledEventTypes": [
+    "LOGIN",
+    "LOGIN_ERROR",
+    "LOGOUT",
+    "REGISTER",
+    "UPDATE_PASSWORD",
+    "UPDATE_PROFILE",
+    "VERIFY_EMAIL"
+  ],
+  "adminEventsEnabled": true,
+  "adminEventsDetailsEnabled": true,
+  "roles": {
+    "realm": [
+      {
+        "name": "SUPER_ADMIN",
+        "description": "Full system access - Level 1 - Complete control over all business units and system functions",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["1"],
+          "category": ["admin"]
+        }
+      },
+      {
+        "name": "ADMIN_LOCAL",
+        "description": "Business unit admin - Level 2 - Full control within assigned business units",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["2"],
+          "category": ["admin"]
+        }
+      },
+      {
+        "name": "SALES_MANAGER",
+        "description": "Sales team manager - Level 3 - Manages sales team and operations",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["3"],
+          "category": ["management"]
+        }
+      },
+      {
+        "name": "DOCUMENT_MANAGER",
+        "description": "Document supervisor - Level 3 - Manages document workflows and approvals",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["3"],
+          "category": ["management"]
+        }
+      },
+      {
+        "name": "SALESPERSON",
+        "description": "Sales representative - Level 4 - Handles customer quotes and orders",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["4"],
+          "category": ["operational"]
+        }
+      },
+      {
+        "name": "ACCOUNTANT",
+        "description": "Financial accountant - Level 4 - Manages financial transactions and reports",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["4"],
+          "category": ["operational"]
+        }
+      },
+      {
+        "name": "SECRETARY",
+        "description": "Administrative support - Level 5 - Provides administrative assistance",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["5"],
+          "category": ["support"]
+        }
+      },
+      {
+        "name": "VIEWER",
+        "description": "Read-only access - Level 5 - View-only permissions across the system",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["5"],
+          "category": ["support"]
+        }
+      },
+      {
+        "name": "EXTERNAL_API_READ",
+        "description": "External API read access - For third-party integrations",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["api"],
+          "category": ["external"]
+        }
+      },
+      {
+        "name": "EXTERNAL_API_WRITE",
+        "description": "External API write access - For third-party integrations",
+        "composite": false,
+        "clientRole": false,
+        "attributes": {
+          "level": ["api"],
+          "category": ["external"]
+        }
+      }
+    ],
+    "client": {}
+  },
+  "groups": [
+    {
+      "name": "Sales Teams",
+      "path": "/Sales Teams",
+      "attributes": {
+        "department": ["sales"]
+      },
+      "subGroups": []
+    },
+    {
+      "name": "Finance Teams",
+      "path": "/Finance Teams",
+      "attributes": {
+        "department": ["finance"]
+      },
+      "subGroups": []
+    },
+    {
+      "name": "Administration",
+      "path": "/Administration",
+      "attributes": {
+        "department": ["admin"]
+      },
+      "subGroups": []
+    }
+  ],
+  "clients": [
+    {
+      "clientId": "eflo-web-app",
+      "name": "Eflo Web Application",
+      "description": "Main web application client for Eflo platform",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "redirectUris": [
+        "http://localhost:3000/*",
+        "http://localhost:3001/*",
+        "https://eflo.app/*",
+        "https://*.eflo.app/*"
+      ],
+      "webOrigins": [
+        "http://localhost:3000",
+        "http://localhost:3001",
+        "https://eflo.app",
+        "https://*.eflo.app"
+      ],
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "1800",
+        "client.secret.creation.time": "1704067200",
+        "backchannel.logout.session.required": "true",
+        "backchannel.logout.revoke.offline.tokens": "false"
+      },
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles",
+        "email"
+      ],
+      "optionalClientScopes": [
+        "address",
+        "phone",
+        "offline_access",
+        "microprofile-jwt"
+      ],
+      "protocolMappers": [
+        {
+          "name": "employeeNumber",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "employeeNumber",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "employeeNumber",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "businessUnitIds",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "businessUnitIds",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "businessUnitIds",
+            "jsonType.label": "JSON"
+          }
+        },
+        {
+          "name": "salesmanagerIds",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "salesmanagerIds",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "salesmanagerIds",
+            "jsonType.label": "JSON"
+          }
+        },
+        {
+          "name": "region",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "region",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "region",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "roles",
+            "jsonType.label": "String",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "audience-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-audience-mapper",
+          "consentRequired": false,
+          "config": {
+            "included.client.audience": "eflo-web-app",
+            "id.token.claim": "false",
+            "access.token.claim": "true"
+          }
+        }
+      ]
+    },
+    {
+      "clientId": "eflo-api-gateway",
+      "name": "Eflo API Gateway",
+      "description": "Backend API gateway for service-to-service authentication",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${GATEWAY_CLIENT_SECRET}",
+      "publicClient": false,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": true,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600",
+        "client.secret.creation.time": "1704067200",
+        "backchannel.logout.session.required": "true"
+      },
+      "fullScopeAllowed": true,
+      "defaultClientScopes": [
+        "web-origins",
+        "profile",
+        "roles"
+      ],
+      "optionalClientScopes": [
+        "email",
+        "address",
+        "phone",
+        "offline_access"
+      ]
+    },
+    {
+      "clientId": "eflo-microservices",
+      "name": "Eflo Microservices Client",
+      "description": "Service account for microservice authentication",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "${WEB_APP_CLIENT_SECRET}",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "protocol": "openid-connect",
+      "attributes": {
+        "access.token.lifespan": "3600"
+      },
+      "fullScopeAllowed": false,
+      "defaultClientScopes": [
+        "roles"
+      ]
+    }
+  ],
+  "clientScopes": [
+    {
+      "name": "eflo-custom-scope",
+      "description": "Custom scope for Eflo-specific claims",
+      "protocol": "openid-connect",
+      "attributes": {
+        "include.in.token.scope": "true",
+        "display.on.consent.screen": "false"
+      },
+      "protocolMappers": [
+        {
+          "name": "business-unit-mapper",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "businessUnitIds",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "businessUnitIds",
+            "jsonType.label": "JSON"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin@eflo.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "System",
+      "lastName": "Administrator",
+      "email": "admin@eflo.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${ADMIN_PASSWORD}",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["SUPER_ADMIN"],
+      "attributes": {
+        "employeeNumber": ["ADMIN001"],
+        "businessUnitIds": ["[1]"],
+        "region": ["GLOBAL"],
+        "department": ["IT"]
+      }
+    },
+    {
+      "username": "john.doe@eflo.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "John",
+      "lastName": "Doe",
+      "email": "john.doe@eflo.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "test",
+          "temporary": false
+        }
+      ],
+      "realmRoles": [
+        "SUPER_ADMIN",
+        "ADMIN_LOCAL",
+        "SALES_MANAGER",
+        "DOCUMENT_MANAGER",
+        "SALESPERSON",
+        "ACCOUNTANT",
+        "SECRETARY",
+        "VIEWER",
+        "EXTERNAL_API_READ",
+        "EXTERNAL_API_WRITE"
+      ],
+      "groups": ["/Sales Teams", "/Administration"],
+      "attributes": {
+        "employeeNumber": ["EMP12345"],
+        "businessUnitIds": ["[1, 2, 3]"],
+        "region": ["EU-WEST"],
+        "salesmanagerIds": ["[10, 15, 20]"],
+        "department": ["Sales"]
+      }
+    },
+    {
+      "username": "jane.smith@eflo.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Jane",
+      "lastName": "Smith",
+      "email": "jane.smith@eflo.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["SALES_MANAGER"],
+      "groups": ["/Sales Teams"],
+      "attributes": {
+        "employeeNumber": ["EMP12346"],
+        "businessUnitIds": ["[1, 2]"],
+        "region": ["EU-WEST"],
+        "department": ["Sales"]
+      }
+    },
+    {
+      "username": "bob.johnson@eflo.com",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Bob",
+      "lastName": "Johnson",
+      "email": "bob.johnson@eflo.com",
+      "credentials": [
+        {
+          "type": "password",
+          "value": "${DEMO_USER_PASSWORD}",
+          "temporary": true
+        }
+      ],
+      "realmRoles": ["ACCOUNTANT"],
+      "groups": ["/Finance Teams"],
+      "attributes": {
+        "employeeNumber": ["EMP12347"],
+        "businessUnitIds": ["[1]"],
+        "region": ["EU-WEST"],
+        "department": ["Finance"]
+      }
+    }
+  ],
+  "smtpServer": {
+    "from": "noreply@eflo.com",
+    "fromDisplayName": "Eflo Platform",
+    "host": "smtp.example.com",
+    "port": "587",
+    "auth": "true",
+    "ssl": "false",
+    "starttls": "true"
+  },
+  "browserSecurityHeaders": {
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xContentTypeOptions": "nosniff",
+    "xFrameOptions": "SAMEORIGIN",
+    "xRobotsTag": "none",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "attributes": {
+    "frontendUrl": "http://localhost:8180",
+    "adminUrl": "http://localhost:8180",
+    "failureFactor": "5",
+    "bruteForceProtected": "true"
+  }
+}

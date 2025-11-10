@@ -1,0 +1,53 @@
+# =====================================================
+# Eureka Server - Development Profile
+# =====================================================
+# This configuration is used for local development environment
+# Run with: --spring.profiles.active=dev
+# =====================================================
+
+eureka:
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+  server:
+    # Faster eviction in development for quick testing
+    eviction-interval-timer-in-ms: 30000
+
+    # Disable self-preservation in dev for easier debugging
+    enable-self-preservation: false
+
+    # Faster cache updates for development
+    response-cache-update-interval-ms: 15000
+
+  instance:
+    hostname: localhost
+    prefer-ip-address: false
+
+    # Faster heartbeat intervals for development
+    lease-renewal-interval-in-seconds: 15
+    lease-expiration-duration-in-seconds: 30
+
+# =====================================================
+# Actuator - Development Settings
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose all endpoints in development for debugging
+        include: "*"
+
+# =====================================================
+# Logging - Development Settings
+# =====================================================
+logging:
+  level:
+    root: INFO
+    com.eflo: DEBUG
+    com.netflix.eureka: DEBUG
+    com.netflix.discovery: DEBUG
+  pattern:
+    console: "%clr(%d{yyyy-MM-dd HH:mm:ss}){faint} %clr(%5p) %clr(${PID:- }){magenta} %clr(---){faint} %clr([%15.15t]){faint} %clr(%-40.40logger{39}){cyan} %clr(:){faint} %m%n%wEx"

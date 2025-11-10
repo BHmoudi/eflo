@@ -1,0 +1,121 @@
+# =====================================================
+# Eureka Server - Base Configuration
+# =====================================================
+# This is the base configuration for the Eureka Service Discovery Server.
+# Profile-specific configurations will override these settings.
+# =====================================================
+
+server:
+  port: 8761
+
+spring:
+  application:
+    name: eureka-server
+
+  # Security configuration
+  security:
+    user:
+      name: ${EUREKA_USERNAME:eureka}
+      password: ${EUREKA_PASSWORD:eurekapass}
+
+# =====================================================
+# Eureka Server Configuration
+# =====================================================
+eureka:
+  # Client Configuration
+  # Eureka server itself is a client that can register with other Eureka servers
+  # For standalone mode, we disable these features
+  client:
+    # Don't register this server with other Eureka servers
+    register-with-eureka: false
+    # Don't fetch registry information from other Eureka servers
+    fetch-registry: false
+    # Service URL for clients to connect to
+    service-url:
+      defaultZone: http://localhost:8761/eureka/
+
+  # Server Configuration
+  server:
+    # Enable self-preservation mode to prevent mass service de-registrations
+    # during network partitions or outages
+    enable-self-preservation: true
+
+    # How often to run the eviction task to remove expired instances (in ms)
+    eviction-interval-timer-in-ms: 60000
+
+    # Renewal percent threshold - below this, self-preservation kicks in
+    # Default is 0.85 (85% of services must send heartbeats)
+    renewal-percent-threshold: 0.85
+
+    # How often to update the response cache (in ms)
+    response-cache-update-interval-ms: 30000
+
+    # How long to keep the response cache (in ms)
+    response-cache-auto-expiration-in-seconds: 180
+
+  # Instance Configuration
+  instance:
+    # Hostname for this Eureka server instance
+    hostname: localhost
+
+    # Prefer IP address over hostname
+    prefer-ip-address: false
+
+    # How often the client sends heartbeats to server (in seconds)
+    lease-renewal-interval-in-seconds: 30
+
+    # How long the server waits before removing instance (in seconds)
+    lease-expiration-duration-in-seconds: 90
+
+# =====================================================
+# Spring Boot Actuator Configuration
+# =====================================================
+management:
+  endpoints:
+    web:
+      exposure:
+        # Expose health, info, metrics, and prometheus endpoints
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+
+  endpoint:
+    health:
+      # Show detailed health information
+      show-details: always
+      # Enable health checks for components
+      enabled: true
+
+    info:
+      enabled: true
+
+    metrics:
+      enabled: true
+
+    prometheus:
+      enabled: true
+
+  # Metrics configuration
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+    tags:
+      application: ${spring.application.name}
+
+  # Health check configuration
+  health:
+    defaults:
+      enabled: true
+
+# =====================================================
+# Logging Configuration
+# =====================================================
+logging:
+  level:
+    root: INFO
+    com.eflo: DEBUG
+    com.netflix.eureka: INFO
+    com.netflix.discovery: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"

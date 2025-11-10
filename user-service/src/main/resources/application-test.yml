@@ -1,0 +1,48 @@
+spring:
+  # Test Database Configuration
+  datasource:
+    url: jdbc:h2:mem:testdb
+    username: sa
+    password:
+    driver-class-name: org.h2.Driver
+
+  # JPA Configuration for Tests
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.H2Dialect
+
+  # Flyway disabled for tests
+  flyway:
+    enabled: false
+
+  # Security disabled for tests
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://localhost:8180/realms/eflo
+
+# Keycloak Configuration for Tests
+keycloak:
+  auth-server-url: http://localhost:8180
+  realm: eflo
+  admin:
+    username: admin
+    password: admin
+    client-id: admin-cli
+
+# Eureka disabled for tests
+eureka:
+  client:
+    enabled: false
+
+# Logging Configuration for Tests
+logging:
+  level:
+    com.eflo.user: DEBUG
+    org.springframework.security: WARN
+    org.hibernate.SQL: DEBUG

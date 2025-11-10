@@ -1,0 +1,54 @@
+# Prometheus Configuration for Keycloak Monitoring
+
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    cluster: 'eflo-keycloak'
+    environment: 'production'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - 'alertmanager:9093'
+
+# Load rules for alerts
+rule_files:
+  - 'keycloak-alerts.yml'
+
+# Scrape configurations
+scrape_configs:
+  # Keycloak metrics
+  - job_name: 'keycloak'
+    metrics_path: '/metrics'
+    static_configs:
+      - targets: ['keycloak:8180']
+        labels:
+          service: 'keycloak'
+          realm: 'eflo'
+
+  # PostgreSQL metrics (requires postgres_exporter)
+  - job_name: 'postgres-keycloak'
+    static_configs:
+      - targets: ['postgres-exporter:9187']
+        labels:
+          service: 'postgres-keycloak'
+          database: 'keycloak_db'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']
+        labels:
+          service: 'prometheus'
+
+# Keycloak-specific metric relabeling
+  - job_name: 'keycloak-custom-metrics'
+    metrics_path: '/auth/realms/eflo/metrics'
+    static_configs:
+      - targets: ['keycloak:8180']
+        labels:
+          service: 'keycloak-realm'
+          realm: 'eflo'

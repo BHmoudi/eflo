@@ -1,0 +1,278 @@
+{
+  "mappingName": "MOVE Order Import Mapping",
+  "version": "1.0",
+  "source": "MOVE",
+  "description": "Mapping configuration for MOVE system JSON to E-FLO orders",
+  "dateFormat": "yyyy-MM-dd HH:mm:ss",
+
+  "customer": {
+    "type": "prix.szTypeClient",
+    "civility": "prix.szCiviliteClient",
+    "firstName": "prix.szPrenomClient",
+    "lastName": "prix.szNomClient",
+    "email": "prix.szEmailClient",
+    "phoneMobile": "prix.szTelClientPortable",
+    "address": "prix.szAdresseClient",
+    "postalCode": "prix.szCodePostalClient",
+    "city": "prix.szVilleClient",
+    "country": "FR",
+    "sa": "prix.szSAClient",
+    "commercialName": "prix.szClientFinal"
+  },
+
+  "order": {
+    "orderNumber": "prix.iNumContratCommande",
+    "orderType": {
+      "source": "prix.szGenre",
+      "mapping": {
+        "VN": "VN",
+        "VO": "VO",
+        "EVO": "EVO"
+      }
+    },
+    "establishmentName": "prix.szNomEtablissement",
+    "identifiantRR": "prix.szIdentifiantRR",
+    "rattachement": "prix.szRattachement",
+    "salespersonIpn": "prix.userIpn",
+    "salespersonName": {
+      "template": "{prix.szPrenomVendeur} {prix.szNomVendeur}"
+    },
+    "sellerType": "prix.cTypeVendeur",
+
+    "brandName": "prix.szMarque",
+    "modelName": "prix.szModele",
+    "versionName": "prix.szVersion",
+    "semiClairModel": "prix.szSemiClairModele",
+    "semiClairVersion": "prix.szSemiClairVersion",
+    "exteriorColorName": "prix.szCouleur",
+    "fuelType": "prix.szEnergie",
+    "co2Level": "prix.iNivCO2",
+    "bodyType": "prix.szGamme",
+
+    "productType": "prix.szTypeProduit",
+    "tariffNumber": "prix.iNumTarif",
+    "barcode": "prix.szCodeBareme",
+    "familyBarcode": "prix.szFamilleBareme",
+    "distrinetCode": "prix.szCodeDistrinet",
+    "distrinetExportNumber": "prix.szNumExport",
+
+    "catalogPriceInclTax": "prix.fMontantCatalogue",
+    "sellingPriceExclTax": "prix.fPrixHTPublic",
+    "netPurchasePriceExclTax": "prix.fPrixHTConcessionnaire",
+    "discountAmountExclTax": "prix.fMontantRemise",
+    "vatRate": {
+      "source": "prix.fTauxTVA",
+      "transform": "MULTIPLY_100"
+    },
+
+    "financingType": {
+      "source": "prix.szCategorieFinanDMS",
+      "mapping": {
+        "": "CASH",
+        "LOA": "LOA",
+        "LLD": "LLD",
+        "CREDIT": "LOAN"
+      },
+      "default": "CASH"
+    },
+    "financingContractDiac": "prix.iNumContratFinanDiac",
+    "financingAmount": "prix.fMontantAFinancer",
+    "financingWithDeposit": {
+      "source": "prix.iFinancementAvecCaution",
+      "transform": "TO_BOOLEAN"
+    },
+    "financingNumberOfServices": "prix.iNbreAssurances",
+
+    "aideRpe": "prix.fAideRPE",
+    "aideAutres": "prix.fAideAutres",
+
+    "expectedDeliveryDate": {
+      "source": "prix.szDateLivraison",
+      "transform": "PARSE_DATE"
+    },
+
+    "createdAt": {
+      "source": "prix.dateCreate",
+      "transform": "PARSE_DATE"
+    }
+  },
+
+  "tradeIn": {
+    "enabled": {
+      "source": "prix.szRepVO_Chassis",
+      "condition": "NOT_EMPTY"
+    },
+    "ownerName": "prix.szRepVONom_CG",
+    "vehicleType": "VP",
+    "brand": "prix.szRepVO_Marque",
+    "model": "prix.szRepVO_Modele",
+    "vin": "prix.szRepVO_Chassis",
+    "fuelType": "prix.szRepVO_Energie",
+    "mileage": "prix.szRepVO_Km",
+    "origin": "prix.szRepVO_Origine",
+    "registrationDate": {
+      "source": "prix.szRepVO_ImmaDate",
+      "transform": "PARSE_DATE"
+    },
+    "firstRegistrationDate": {
+      "source": "prix.szRepVO_ImmaDate1",
+      "transform": "PARSE_DATE"
+    },
+    "conversionBonus": "prix.szRepVO_PrimeConv",
+    "engagementAmount": "prix.fMontantEngagementReprise",
+    "overestimation": "prix.fSurestimationRepVO",
+    "finalValue": "prix.fValeurRepriseVO"
+  },
+
+  "commercialActions": {
+    "arrayPath": "actionCo",
+    "fields": {
+      "actionCode": "szLibelle",
+      "actionLabel": "szLibelle",
+      "amountOrPercentage": "fMontantPourcentage",
+      "isPercentage": {
+        "source": "bPourcentage",
+        "transform": "TO_BOOLEAN"
+      },
+      "vatRate": {
+        "source": "fTauxTva",
+        "transform": "MULTIPLY_100"
+      },
+      "vatType": "szTypeTVA"
+    }
+  },
+
+  "options": {
+    "arrayPath": "option",
+    "fields": {
+      "optionCode": "szSemiClair",
+      "optionName": "szLibelle",
+      "semiClairCode": "szSemiClair",
+      "unitPriceExclTax": "fMontant",
+      "discountAmount": "fMontantRemise",
+      "vatType": "szTypeTVA"
+    }
+  },
+
+  "accessories": {
+    "arrayPath": "accessoire",
+    "fields": {
+      "accessoryCode": "szCode",
+      "accessoryName": "szLibelle",
+      "unitPriceExclTax": "fMontant",
+      "quantity": "iQuantite"
+    }
+  },
+
+  "supplements": {
+    "arrayPath": "supplement",
+    "fields": {
+      "supplementName": "szLibelle",
+      "amountExclTax": "fMontant",
+      "supplementType": {
+        "source": "szLibelle",
+        "mapping": {
+          "DEM ADMIN ET MISE EN MAIN": "ADMIN_FEES",
+          "CARBURANT": "FUEL",
+          "ACC TAPIS": "ACCESSORIES",
+          "TAXE DE GESTION": "TAX",
+          "CERTIFICAT IMMATRICULATION": "REGISTRATION",
+          "REDEVANCE ENVOI": "DELIVERY"
+        },
+        "default": "OTHER"
+      },
+      "isTaxable": {
+        "source": "szTypeTVA",
+        "condition": "EQUALS",
+        "value": "TC",
+        "default": false
+      }
+    }
+  },
+
+  "services": {
+    "arrayPath": "service",
+    "fields": {
+      "serviceType": {
+        "source": "szTypeServices",
+        "mapping": {
+          "PA": "MAINTENANCE_PACK",
+          "GA": "WARRANTY",
+          "AS": "ASSISTANCE"
+        },
+        "default": "OTHER"
+      },
+      "serviceName": "csLibelleServices",
+      "serviceCode": "szCodeBaremeServices",
+      "serviceBarcode": "szCodeBaremeServices",
+      "barcodeLabel": "csLibelleBaremeServices",
+      "durationMonths": "iDureeServices",
+      "mileageLimitKm": "iKilometrageServices",
+      "unitPriceExclTax": "fMontantServices",
+      "discountAmount": "fMontantRemiseServices",
+      "isCashPayment": {
+        "source": "bComptant",
+        "transform": "TO_BOOLEAN"
+      }
+    }
+  },
+
+  "documents": {
+    "arrayPath": "document",
+    "publishToKafka": true,
+    "kafkaTopic": "document.import",
+    "fields": {
+      "documentId": "rDocId",
+      "fileType": "fileType",
+      "fileName": "fileName",
+      "documentType": "documentType",
+      "personId": "personId",
+      "signatureStatus": "signed"
+    }
+  },
+
+  "actors": {
+    "client": {
+      "role": "CLIENT",
+      "civility": "prix.szCiviliteClient",
+      "firstName": "prix.szPrenomClient",
+      "lastName": "prix.szNomClient",
+      "email": "prix.szEmailClient",
+      "phone": "prix.szTelClientPortable",
+      "address": "prix.szAdresseClient",
+      "postalCode": "prix.szCodePostalClient",
+      "city": "prix.szVilleClient"
+    },
+    "vendeur": {
+      "role": "VENDEUR",
+      "firstName": "prix.szPrenomVendeur",
+      "lastName": "prix.szNomVendeur",
+      "userIpn": "prix.userIpn"
+    }
+  },
+
+  "transforms": {
+    "MULTIPLY_100": {
+      "description": "Multiply value by 100 (e.g., 0.2 -> 20.0)",
+      "operation": "multiply",
+      "value": 100
+    },
+    "TO_BOOLEAN": {
+      "description": "Convert to boolean (0=false, 1=true, non-zero=true)",
+      "operation": "toBoolean"
+    },
+    "PARSE_DATE": {
+      "description": "Parse date string to Date object",
+      "operation": "parseDate",
+      "format": "yyyy-MM-dd HH:mm:ss"
+    },
+    "NOT_EMPTY": {
+      "description": "Check if value is not null or empty",
+      "operation": "isNotEmpty"
+    },
+    "EQUALS": {
+      "description": "Check if value equals specified value",
+      "operation": "equals"
+    }
+  }
+}

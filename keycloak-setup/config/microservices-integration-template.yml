@@ -1,0 +1,45 @@
+# Microservices Integration Template for Keycloak
+# This template should be used in all Eflo microservices for OAuth2/JWT integration
+
+spring:
+  application:
+    name: ${SERVICE_NAME}
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          # Keycloak issuer URI
+          issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo
+          # JWK Set URI for token validation
+          jwk-set-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo/protocol/openid-connect/certs
+
+      client:
+        registration:
+          keycloak:
+            client-id: ${OAUTH2_CLIENT_ID:eflo-microservices}
+            client-secret: ${OAUTH2_CLIENT_SECRET}
+            authorization-grant-type: client_credentials
+            scope: openid, profile, roles
+
+        provider:
+          keycloak:
+            issuer-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo
+            token-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo/protocol/openid-connect/token
+            authorization-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo/protocol/openid-connect/auth
+            user-info-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo/protocol/openid-connect/userinfo
+            jwk-set-uri: ${KEYCLOAK_URL:http://localhost:8180}/realms/eflo/protocol/openid-connect/certs
+            user-name-attribute: preferred_username
+
+# JWT Configuration
+jwt:
+  auth:
+    converter:
+      resource-id: eflo-api-gateway
+      principal-attribute: preferred_username
+
+# Logging
+logging:
+  level:
+    org.springframework.security: INFO
+    org.springframework.security.oauth2: DEBUG

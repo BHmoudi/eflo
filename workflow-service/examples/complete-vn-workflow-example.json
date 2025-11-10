@@ -1,0 +1,497 @@
+{
+  "workflowName": "Complete VN Workflow Example",
+  "description": "Comprehensive example showcasing all workflow features: task types, dependencies, conditions, approvals, and dynamic forms",
+  "process": {
+    "processCode": "VN_COMPLETE_EXAMPLE",
+    "processName": "VN Complete Workflow",
+    "description": "Complete vehicle workflow with all advanced features",
+    "orderType": "VN",
+    "maxDurationDays": 90,
+    "autoProgressEnabled": true
+  },
+  "states": [
+    {
+      "stateCode": "ORDER_INTAKE",
+      "stateName": "Order Intake",
+      "description": "Initial order creation and documentation",
+      "stateOrder": 1,
+      "stateType": "START",
+      "expectedDurationHours": 24,
+      "tasks": [
+        {
+          "taskCode": "COLLECT_CUSTOMER_INFO",
+          "taskName": "Collect Customer Information",
+          "taskType": "ACTION",
+          "taskOrder": 1,
+          "isMandatory": true,
+          "assignedToRole": "COMMERCIAL",
+          "slaHours": 12,
+          "inputFields": [
+            {
+              "name": "customerName",
+              "type": "text",
+              "label": "Customer Name",
+              "required": true,
+              "maxLength": 100
+            },
+            {
+              "name": "customerEmail",
+              "type": "text",
+              "label": "Email Address",
+              "required": true,
+              "validation": {
+                "pattern": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+                "message": "Please enter a valid email address"
+              }
+            },
+            {
+              "name": "customerPhone",
+              "type": "text",
+              "label": "Phone Number",
+              "required": true
+            },
+            {
+              "name": "customerType",
+              "type": "select",
+              "label": "Customer Type",
+              "required": true,
+              "options": ["Individual", "Company", "VIP"]
+            }
+          ]
+        },
+        {
+          "taskCode": "UPLOAD_IDENTITY_DOCS",
+          "taskName": "Upload Identity Documents",
+          "taskType": "DOCUMENT",
+          "taskOrder": 2,
+          "isMandatory": true,
+          "assignedToRole": "COMMERCIAL",
+          "slaHours": 24,
+          "requiredDocuments": ["PDF", "IMAGE", "JPEG", "PNG"],
+          "dependencies": [
+            {
+              "requiredTaskCode": "COLLECT_CUSTOMER_INFO",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        },
+        {
+          "taskCode": "UPLOAD_COMPANY_DOCS",
+          "taskName": "Upload Company Documents (KBIS)",
+          "taskType": "DOCUMENT",
+          "taskOrder": 3,
+          "isMandatory": false,
+          "assignedToRole": "COMMERCIAL",
+          "slaHours": 48,
+          "requiredDocuments": ["PDF"],
+          "conditions": [
+            {
+              "conditionType": "FIELD_VALUE",
+              "conditionField": "customerType",
+              "conditionOperator": "EQUALS",
+              "conditionValue": "Company"
+            }
+          ],
+          "dependencies": [
+            {
+              "requiredTaskCode": "COLLECT_CUSTOMER_INFO",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        },
+        {
+          "taskCode": "VERIFY_DOCUMENTS",
+          "taskName": "Verify All Documents",
+          "taskType": "CONTROL",
+          "taskOrder": 4,
+          "isMandatory": true,
+          "assignedToRole": "CDV",
+          "slaHours": 12,
+          "dependencies": [
+            {
+              "requiredTaskCode": "UPLOAD_IDENTITY_DOCS",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateCode": "VEHICLE_SELECTION",
+      "stateName": "Vehicle Selection",
+      "description": "Select and configure vehicle",
+      "stateOrder": 2,
+      "stateType": "NORMAL",
+      "expectedDurationHours": 48,
+      "tasks": [
+        {
+          "taskCode": "SELECT_VEHICLE_MODEL",
+          "taskName": "Select Vehicle Model",
+          "taskType": "ACTION",
+          "taskOrder": 1,
+          "isMandatory": true,
+          "assignedToRole": "COMMERCIAL",
+          "slaHours": 24,
+          "inputFields": [
+            {
+              "name": "vehicleBrand",
+              "type": "select",
+              "label": "Vehicle Brand",
+              "required": true,
+              "options": ["Renault", "Dacia", "Nissan", "Alpine"]
+            },
+            {
+              "name": "vehicleModel",
+              "type": "text",
+              "label": "Model",
+              "required": true
+            },
+            {
+              "name": "vehicleVersion",
+              "type": "text",
+              "label": "Version",
+              "required": true
+            },
+            {
+              "name": "vehicleColor",
+              "type": "text",
+              "label": "Color",
+              "required": true
+            },
+            {
+              "name": "orderAmount",
+              "type": "number",
+              "label": "Total Order Amount (€)",
+              "required": true,
+              "min": 0,
+              "step": 0.01
+            }
+          ]
+        },
+        {
+          "taskCode": "CALCULATE_PRICING",
+          "taskName": "Calculate Final Pricing",
+          "taskType": "ACTION",
+          "taskOrder": 2,
+          "isMandatory": true,
+          "assignedToRole": "COMMERCIAL",
+          "slaHours": 12,
+          "inputFields": [
+            {
+              "name": "basePrice",
+              "type": "number",
+              "label": "Base Price (€)",
+              "required": true,
+              "min": 0
+            },
+            {
+              "name": "discountPercent",
+              "type": "number",
+              "label": "Discount (%)",
+              "required": false,
+              "min": 0,
+              "max": 50
+            },
+            {
+              "name": "finalPrice",
+              "type": "number",
+              "label": "Final Price (€)",
+              "required": true,
+              "min": 0
+            }
+          ],
+          "dependencies": [
+            {
+              "requiredTaskCode": "SELECT_VEHICLE_MODEL",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        },
+        {
+          "taskCode": "UPLOAD_PRICING_DOCS",
+          "taskName": "Upload Pricing Documents",
+          "taskType": "DOCUMENT",
+          "taskOrder": 3,
+          "isMandatory": true,
+          "assignedToRole": "COMMERCIAL",
+          "slaHours": 24,
+          "requiredDocuments": ["PDF", "EXCEL"],
+          "dependencies": [
+            {
+              "requiredTaskCode": "CALCULATE_PRICING",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateCode": "APPROVAL",
+      "stateName": "Hierarchical Approval",
+      "description": "Multi-level approval process",
+      "stateOrder": 3,
+      "stateType": "NORMAL",
+      "requiresApproval": true,
+      "expectedDurationHours": 96,
+      "tasks": [
+        {
+          "taskCode": "CDV_APPROVAL",
+          "taskName": "CDV Approval",
+          "taskType": "CONTROL",
+          "taskOrder": 1,
+          "isMandatory": true,
+          "requiresApproval": true,
+          "assignedToRole": "CDV",
+          "approvalChainId": 1,
+          "slaHours": 48,
+          "escalationHours": 36
+        },
+        {
+          "taskCode": "CDR_APPROVAL",
+          "taskName": "CDR Final Approval",
+          "taskType": "CONTROL",
+          "taskOrder": 2,
+          "isMandatory": true,
+          "requiresApproval": true,
+          "assignedToRole": "CDR",
+          "approvalChainId": 2,
+          "slaHours": 48,
+          "dependencies": [
+            {
+              "requiredTaskCode": "CDV_APPROVAL",
+              "dependencyType": "APPROVAL"
+            }
+          ],
+          "conditions": [
+            {
+              "conditionType": "ORDER_CRITERIA",
+              "conditionField": "orderAmount",
+              "conditionOperator": "GREATER_THAN",
+              "conditionValue": "50000"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateCode": "PROCESSING",
+      "stateName": "Order Processing",
+      "description": "Process and prepare order",
+      "stateOrder": 4,
+      "stateType": "NORMAL",
+      "expectedDurationHours": 120,
+      "tasks": [
+        {
+          "taskCode": "CREATE_ORDER_SYSTEM",
+          "taskName": "Create Order in System",
+          "taskType": "ACTION",
+          "taskOrder": 1,
+          "isMandatory": true,
+          "assignedToRole": "APPRO",
+          "slaHours": 24,
+          "inputFields": [
+            {
+              "name": "orderNumber",
+              "type": "text",
+              "label": "System Order Number",
+              "required": true
+            },
+            {
+              "name": "estimatedDeliveryDate",
+              "type": "date",
+              "label": "Estimated Delivery Date",
+              "required": true
+            }
+          ]
+        },
+        {
+          "taskCode": "UPLOAD_ORDER_CONFIRMATION",
+          "taskName": "Upload Order Confirmation",
+          "taskType": "DOCUMENT",
+          "taskOrder": 2,
+          "isMandatory": true,
+          "assignedToRole": "APPRO",
+          "slaHours": 12,
+          "requiredDocuments": ["PDF"],
+          "dependencies": [
+            {
+              "requiredTaskCode": "CREATE_ORDER_SYSTEM",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        },
+        {
+          "taskCode": "VERIFY_ORDER",
+          "taskName": "Verify Order Details",
+          "taskType": "CONTROL",
+          "taskOrder": 3,
+          "isMandatory": true,
+          "assignedToRole": "ADMIN",
+          "slaHours": 24,
+          "dependencies": [
+            {
+              "requiredTaskCode": "UPLOAD_ORDER_CONFIRMATION",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateCode": "DELIVERY",
+      "stateName": "Vehicle Delivery",
+      "description": "Final delivery to customer",
+      "stateOrder": 5,
+      "stateType": "NORMAL",
+      "expectedDurationHours": 48,
+      "tasks": [
+        {
+          "taskCode": "SCHEDULE_DELIVERY",
+          "taskName": "Schedule Delivery Appointment",
+          "taskType": "ACTION",
+          "taskOrder": 1,
+          "isMandatory": true,
+          "assignedToRole": "LIVRAISON",
+          "slaHours": 24,
+          "inputFields": [
+            {
+              "name": "deliveryDate",
+              "type": "datetime",
+              "label": "Delivery Date & Time",
+              "required": true
+            },
+            {
+              "name": "deliveryLocation",
+              "type": "text",
+              "label": "Delivery Location",
+              "required": true
+            },
+            {
+              "name": "contactPerson",
+              "type": "text",
+              "label": "Contact Person",
+              "required": true
+            }
+          ]
+        },
+        {
+          "taskCode": "PREPARE_VEHICLE",
+          "taskName": "Prepare Vehicle for Delivery",
+          "taskType": "ACTION",
+          "taskOrder": 2,
+          "isMandatory": true,
+          "assignedToRole": "PREPARATION",
+          "slaHours": 24,
+          "dependencies": [
+            {
+              "requiredTaskCode": "SCHEDULE_DELIVERY",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        },
+        {
+          "taskCode": "QUALITY_CHECK",
+          "taskName": "Final Quality Check",
+          "taskType": "CONTROL",
+          "taskOrder": 3,
+          "isMandatory": true,
+          "assignedToRole": "PREPARATION",
+          "slaHours": 12,
+          "dependencies": [
+            {
+              "requiredTaskCode": "PREPARE_VEHICLE",
+              "dependencyType": "COMPLETION"
+            }
+          ]
+        },
+        {
+          "taskCode": "CONFIRM_DELIVERY",
+          "taskName": "Confirm Delivery Completion",
+          "taskType": "CONTROL",
+          "taskOrder": 4,
+          "isMandatory": true,
+          "assignedToRole": "LIVRAISON",
+          "slaHours": 2,
+          "dependencies": [
+            {
+              "requiredTaskCode": "QUALITY_CHECK",
+              "dependencyType": "APPROVAL",
+              "requiredStatus": "COMPLETED"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "stateCode": "COMPLETED",
+      "stateName": "Completed",
+      "description": "Order completed successfully",
+      "stateOrder": 6,
+      "stateType": "FINAL",
+      "isFinalState": true,
+      "tasks": []
+    }
+  ],
+  "transitions": [
+    {
+      "transitionName": "Start Workflow",
+      "fromStateCode": "ORDER_INTAKE",
+      "toStateCode": "VEHICLE_SELECTION",
+      "transitionType": "NORMAL",
+      "requiresApproval": false,
+      "autoTransition": false
+    },
+    {
+      "transitionName": "Submit for Approval",
+      "fromStateCode": "VEHICLE_SELECTION",
+      "toStateCode": "APPROVAL",
+      "transitionType": "NORMAL",
+      "requiresApproval": false,
+      "autoTransition": false
+    },
+    {
+      "transitionName": "Approved - Start Processing",
+      "fromStateCode": "APPROVAL",
+      "toStateCode": "PROCESSING",
+      "transitionType": "NORMAL",
+      "requiresApproval": true,
+      "autoTransition": true
+    },
+    {
+      "transitionName": "Rejected - Return to Selection",
+      "fromStateCode": "APPROVAL",
+      "toStateCode": "VEHICLE_SELECTION",
+      "transitionType": "ROLLBACK",
+      "requiresApproval": false,
+      "autoTransition": false
+    },
+    {
+      "transitionName": "Processed - Ready for Delivery",
+      "fromStateCode": "PROCESSING",
+      "toStateCode": "DELIVERY",
+      "transitionType": "NORMAL",
+      "requiresApproval": false,
+      "autoTransition": false
+    },
+    {
+      "transitionName": "Delivered - Complete",
+      "fromStateCode": "DELIVERY",
+      "toStateCode": "COMPLETED",
+      "transitionType": "NORMAL",
+      "requiresApproval": false,
+      "autoTransition": true
+    }
+  ],
+  "features": {
+    "taskTypes": ["DOCUMENT", "ACTION", "CONTROL"],
+    "inputTypes": ["text", "number", "date", "datetime", "select", "textarea"],
+    "dependencies": ["COMPLETION", "APPROVAL", "STATUS", "FIELD_VALUE"],
+    "conditions": ["FIELD_VALUE", "ORDER_CRITERIA"],
+    "approvals": ["Single-level", "Multi-level hierarchical"],
+    "multiTaskSupport": true,
+    "conditionalTasks": true,
+    "dynamicForms": true,
+    "documentManagement": true,
+    "slaTracking": true
+  }
+}

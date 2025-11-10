@@ -1,0 +1,322 @@
+{
+  "dashboard": {
+    "title": "Keycloak Monitoring Dashboard - Eflo",
+    "uid": "keycloak-eflo",
+    "version": 1,
+    "timezone": "browser",
+    "editable": true,
+    "panels": [
+      {
+        "title": "Keycloak Service Status",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "up{job=\"keycloak\"}",
+            "legendFormat": "Status"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 0,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "red"},
+                {"value": 1, "color": "green"}
+              ]
+            },
+            "mappings": [
+              {"type": "value", "value": "0", "text": "Down"},
+              {"type": "value", "value": "1", "text": "Up"}
+            ]
+          }
+        }
+      },
+      {
+        "title": "Active Sessions",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "keycloak_active_sessions",
+            "legendFormat": "Sessions"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 6,
+          "y": 0
+        }
+      },
+      {
+        "title": "Total Users",
+        "type": "stat",
+        "targets": [
+          {
+            "expr": "keycloak_users_total",
+            "legendFormat": "Users"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 12,
+          "y": 0
+        }
+      },
+      {
+        "title": "Response Time (95th percentile)",
+        "type": "gauge",
+        "targets": [
+          {
+            "expr": "histogram_quantile(0.95, rate(keycloak_request_duration_seconds_bucket[5m]))",
+            "legendFormat": "95th %ile"
+          }
+        ],
+        "gridPos": {
+          "h": 4,
+          "w": 6,
+          "x": 18,
+          "y": 0
+        },
+        "fieldConfig": {
+          "defaults": {
+            "unit": "s",
+            "thresholds": {
+              "steps": [
+                {"value": 0, "color": "green"},
+                {"value": 1, "color": "yellow"},
+                {"value": 2, "color": "red"}
+              ]
+            }
+          }
+        }
+      },
+      {
+        "title": "Login Activity (Last 24h)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(keycloak_login_success_total[5m])",
+            "legendFormat": "Successful Logins"
+          },
+          {
+            "expr": "rate(keycloak_login_failed_total[5m])",
+            "legendFormat": "Failed Logins"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 4
+        },
+        "yaxes": [
+          {
+            "label": "Logins/sec",
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Token Generation Rate",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(keycloak_tokens_issued_total[5m])",
+            "legendFormat": "Access Tokens"
+          },
+          {
+            "expr": "rate(keycloak_refresh_tokens_issued_total[5m])",
+            "legendFormat": "Refresh Tokens"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 4
+        },
+        "yaxes": [
+          {
+            "label": "Tokens/sec",
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Memory Usage",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "process_resident_memory_bytes{job=\"keycloak\"} / 1024 / 1024",
+            "legendFormat": "Memory (MB)"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 12
+        },
+        "yaxes": [
+          {
+            "label": "MB",
+            "format": "short"
+          }
+        ]
+      },
+      {
+        "title": "Database Connections",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "keycloak_database_connection_pool_active",
+            "legendFormat": "Active Connections"
+          },
+          {
+            "expr": "keycloak_database_connection_pool_idle",
+            "legendFormat": "Idle Connections"
+          },
+          {
+            "expr": "keycloak_database_connection_pool_max",
+            "legendFormat": "Max Connections"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 12
+        }
+      },
+      {
+        "title": "User Registrations",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(keycloak_user_registrations_total[1h])",
+            "legendFormat": "Registrations/hour"
+          }
+        ],
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 0,
+          "y": 20
+        }
+      },
+      {
+        "title": "Failed Login Attempts (Brute Force)",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(keycloak_failed_login_attempts_total[5m])",
+            "legendFormat": "Failed Attempts/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 8,
+          "y": 20
+        },
+        "alert": {
+          "conditions": [
+            {
+              "evaluator": {
+                "params": [10],
+                "type": "gt"
+              },
+              "operator": {
+                "type": "and"
+              },
+              "query": {
+                "params": ["A", "5m", "now"]
+              },
+              "reducer": {
+                "params": [],
+                "type": "avg"
+              },
+              "type": "query"
+            }
+          ],
+          "name": "High Failed Login Rate"
+        }
+      },
+      {
+        "title": "Token Validation Errors",
+        "type": "graph",
+        "targets": [
+          {
+            "expr": "rate(keycloak_token_validation_errors_total[5m])",
+            "legendFormat": "Validation Errors/sec"
+          }
+        ],
+        "gridPos": {
+          "h": 6,
+          "w": 8,
+          "x": 16,
+          "y": 20
+        }
+      },
+      {
+        "title": "Top 10 Active Users",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "topk(10, keycloak_user_session_count)",
+            "legendFormat": "{{username}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 0,
+          "y": 26
+        }
+      },
+      {
+        "title": "Realm Events",
+        "type": "table",
+        "targets": [
+          {
+            "expr": "keycloak_realm_events_total",
+            "legendFormat": "{{event_type}}"
+          }
+        ],
+        "gridPos": {
+          "h": 8,
+          "w": 12,
+          "x": 12,
+          "y": 26
+        }
+      }
+    ],
+    "templating": {
+      "list": [
+        {
+          "name": "realm",
+          "type": "query",
+          "query": "label_values(keycloak_active_sessions, realm)",
+          "label": "Realm"
+        },
+        {
+          "name": "interval",
+          "type": "interval",
+          "query": "1m,5m,10m,30m,1h",
+          "label": "Interval"
+        }
+      ]
+    },
+    "time": {
+      "from": "now-24h",
+      "to": "now"
+    },
+    "refresh": "30s"
+  }
+}

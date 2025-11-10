@@ -1,0 +1,60 @@
+# Keycloak Setup - Git Ignore
+
+# Credentials and secrets
+.env
+.keycloak-credentials
+*.credentials
+*secrets*
+*.key
+*.pem
+
+# Backups
+backups/
+*.sql
+*.sql.gz
+*.dump
+
+# Logs
+logs/
+*.log
+
+# Docker volumes
+docker/volumes/
+
+# Temporary files
+*.tmp
+*.temp
+.DS_Store
+.idea/
+.vscode/
+
+# Database dumps
+*.sql.gz
+*.backup
+
+# Environment-specific files
+.env.local
+.env.production
+.env.development
+
+# Node modules (if any)
+node_modules/
+
+# IDE files
+.project
+.classpath
+.settings/
+*.iml
+.idea/
+
+# OS files
+Thumbs.db
+.DS_Store
+
+# Keycloak themes build artifacts
+config/themes/**/target/
+config/themes/**/node_modules/
+
+# Test outputs
+test-results/
+coverage/

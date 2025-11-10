@@ -1,0 +1,45 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://postgres-document:5432/document_db
+    username: document_user
+    password: ${DB_PASSWORD}
+
+  kafka:
+    bootstrap-servers: kafka:29092
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: http://keycloak:8180/realms/eflo
+          jwk-set-uri: http://keycloak:8180/realms/eflo/protocol/openid-connect/certs
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka-server:8761/eureka/
+
+minio:
+  endpoint: http://minio:9000
+  access-key: ${MINIO_ACCESS_KEY}
+  secret-key: ${MINIO_SECRET_KEY}
+  secure: false
+
+clamav:
+  host: clamav
+  port: 3310
+
+feign:
+  client:
+    config:
+      order-service:
+        url: http://order-service:8081
+      workflow-service:
+        url: http://workflow-service:8082
+      user-service:
+        url: http://user-service:8085
+
+logging:
+  level:
+    root: INFO
+    com.eflo.document: INFO

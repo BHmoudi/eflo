@@ -1,0 +1,72 @@
+spring:
+  datasource:
+    url: jdbc:postgresql://localhost:5437/document_db
+    username: document_user
+    password: document_password
+
+  kafka:
+    enabled: false
+
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          enabled: false
+
+eureka:
+  client:
+    enabled: false
+    register-with-eureka: false
+    fetch-registry: false
+
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin
+  bucket:
+    documents: eflo-documents
+    temp: eflo-temp
+    archive: eflo-archive
+  secure: false
+
+clamav:
+  enabled: false
+  host: localhost
+  port: 3310
+
+eflo:
+  document:
+    upload:
+      max-file-size-mb: 100
+      allowed-extensions:
+        - pdf
+        - jpg
+        - jpeg
+        - png
+        - doc
+        - docx
+      blocked-extensions:
+        - exe
+        - bat
+        - sh
+      allowed-mime-types:
+        - application/pdf
+        - image/jpeg
+        - image/png
+    validation:
+      require-virus-scan: false
+    expiration:
+      check-cron: "0 0 2 * * ?"
+      warning-days: 30
+      auto-archive-expired: false
+
+logging:
+  level:
+    root: INFO
+    com.eflo.document: DEBUG
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics

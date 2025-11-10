@@ -1,0 +1,137 @@
+{
+  "common": {
+    "appName": "FLEET-AI",
+    "appTagline": "AI-Powered Workflow Platform",
+    "poweredBy": "Powered by AI Technology",
+    "loading": "Loading...",
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "create": "Create",
+    "back": "Back",
+    "close": "Close",
+    "search": "Search",
+    "filter": "Filter",
+    "actions": "Actions",
+    "status": "Status",
+    "active": "Active",
+    "inactive": "Inactive",
+    "yes": "Yes",
+    "no": "No",
+    "confirm": "Confirm",
+    "systemOnline": "System Online",
+    "secureConnection": "Secure Connection",
+    "dashboard": "Dashboard"
+  },
+  "auth": {
+    "welcomeBack": "Welcome back",
+    "signIn": "Sign In",
+    "signInSubtitle": "Sign in to your AI-powered workflow platform",
+    "signOut": "Sign Out",
+    "email": "Email Address",
+    "emailPlaceholder": "john.doe@eflo.com",
+    "password": "Password",
+    "passwordPlaceholder": "Enter your password",
+    "rememberMe": "Remember me",
+    "forgotPassword": "Forgot password?",
+    "resetPassword": "Reset Password",
+    "sendResetLink": "Send Reset Link",
+    "backToLogin": "Back to Login",
+    "demoCredentials": "Demo Credentials",
+    "signingIn": "Signing in...",
+    "sending": "Sending...",
+    "loginSuccess": "Welcome back! 🎉",
+    "loginError": "Invalid credentials",
+    "resetEmailSent": "Password reset link sent to your email!",
+    "checkEmail": "Check Your Email",
+    "resetEmailMessage": "We've sent a password reset link to",
+    "resendLink": "Resend Link",
+    "didntReceive": "Didn't receive the email? Check your spam folder or try again."
+  },
+  "features": {
+    "aiIntelligence": "AI Intelligence",
+    "aiIntelligenceDesc": "Smart predictions",
+    "vehicleOrders": "Vehicle Orders",
+    "vehicleOrdersDesc": "Full lifecycle",
+    "analytics": "Analytics",
+    "analyticsDesc": "Real-time insights",
+    "collaboration": "Collaboration",
+    "collaborationDesc": "Team workflows",
+    "automation": "Automation",
+    "automationDesc": "Lightning fast",
+    "enterpriseSecurity": "Enterprise Security",
+    "enterpriseSecurityDesc": "Bank-grade",
+    "aiPoweredSecurity": "AI-Powered Security",
+    "aiSecurityDesc": "Our AI monitors suspicious activities and protects your account 24/7"
+  },
+  "stats": {
+    "ordersProcessed": "Orders Processed",
+    "uptime": "Uptime",
+    "aiSupport": "AI Support"
+  },
+  "workflows": {
+    "workflows": "Workflows",
+    "manageWorkflows": "Manage workflow processes",
+    "createWorkflow": "Create Workflow",
+    "totalWorkflows": "Total Workflows",
+    "activeWorkflows": "Active Workflows",
+    "inactiveWorkflows": "Inactive Workflows",
+    "totalStates": "Total States"
+  },
+  "businessUnits": {
+    "businessUnits": "Business Units",
+    "createBusinessUnit": "Create Business Unit",
+    "title": "Business Units",
+    "name": "Name",
+    "code": "Code",
+    "type": "Type",
+    "region": "Region",
+    "manager": "Manager",
+    "active": "Active",
+    "createSuccess": "Business unit created successfully",
+    "createError": "Failed to create business unit",
+    "createDescription": "Add a new business unit",
+    "basicInformation": "Basic Information",
+    "backToList": "Back to List"
+  },
+  "users": {
+    "users": "Users"
+  },
+  "tasks": {
+    "tasks": "Tasks",
+    "myTasks": "My Tasks"
+  },
+  "approvals": {
+    "approvals": "Approvals"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "orders": "Orders",
+    "users": "Users",
+    "workflows": "Workflows",
+    "tasks": "Tasks",
+    "approvals": "Approvals",
+    "businessUnits": "Business Units",
+    "roles": "Roles",
+    "reports": "Reports",
+    "settings": "Settings",
+    "keycloakSync": "Keycloak Sync"
+  },
+  "orders": {
+    "orders": "Orders"
+  },
+  "dashboard": {
+    "dashboard": "Dashboard",
+    "welcomeMessage": "Welcome to E-FLO Workflow Administration"
+  },
+  "forms": {
+    "name": "Name",
+    "creating": "Creating...",
+    "fillRequired": "Please fill in all required fields"
+  },
+  "footer": {
+    "copyright": "© 2025 E-FLO Platform. AI-Enhanced Fleet Management System.",
+    "tagline": "Intelligent Workflow Automation for Modern Enterprises"
+  }
+}

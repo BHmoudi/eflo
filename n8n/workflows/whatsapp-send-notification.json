@@ -1,0 +1,291 @@
+{
+  "name": "WhatsApp - Send Task Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-send",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Task Assigned",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "whatsapp-send"
+    },
+    {
+      "parameters": {
+        "url": "=http://user-service:8084/api/v1/users/by-task/{{$json.taskId}}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "options": {}
+      },
+      "id": "get-user",
+      "name": "Get User Details",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [470, 300],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.whatsappNotificationsEnabled}}",
+              "value2": true
+            },
+            {
+              "value1": "={{$json.phoneNumber}}",
+              "operation": "isNotEmpty"
+            }
+          ]
+        }
+      },
+      "id": "check-whatsapp",
+      "name": "Check WhatsApp Enabled",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [690, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Format WhatsApp message for task notification\nconst webhookData = $('Webhook - Task Assigned').first().json;\nconst userData = $input.first().json;\n\nconst message = `\ud83d\udcdd *Nouvelle tâche assignée*\n\nBonjour ${userData.firstName},\n\nVous avez une nouvelle tâche à traiter :\n\n*Tâche :* ${webhookData.taskName || 'Tâche de workflow'}\n*Commande :* ${webhookData.orderId || 'N/A'}\n*Priorité :* ${webhookData.priority || 'Normale'}\n*Date limite :* ${webhookData.dueDate || 'Non définie'}\n\n\ud83d\udd17 Accéder à la tâche :\n${webhookData.taskUrl}\n\n---\n_Message automatique - Ne pas répondre_`;\n\nreturn {\n  json: {\n    to: userData.phoneNumber,\n    message: message,\n    taskId: webhookData.taskId,\n    userId: userData.id\n  }\n};"
+      },
+      "id": "format-message",
+      "name": "Format WhatsApp Message",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [910, 200]
+    },
+    {
+      "parameters": {
+        "fromNumber": "={{$env.TWILIO_WHATSAPP_NUMBER}}",
+        "toNumber": "=whatsapp:{{$json.to}}",
+        "message": "={{$json.message}}",
+        "options": {}
+      },
+      "id": "send-whatsapp",
+      "name": "Send WhatsApp via Twilio",
+      "type": "n8n-nodes-base.twilio",
+      "typeVersion": 1,
+      "position": [1130, 200],
+      "credentials": {
+        "twilioApi": {
+          "id": "3",
+          "name": "Twilio Account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://workflow-service:8091/api/v1/notifications/log",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{$json.taskId}}"
+            },
+            {
+              "name": "userId",
+              "value": "={{$json.userId}}"
+            },
+            {
+              "name": "channel",
+              "value": "WHATSAPP"
+            },
+            {
+              "name": "status",
+              "value": "SENT"
+            },
+            {
+              "name": "messageSid",
+              "value": "={{$json.sid}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "id": "log-notification",
+      "name": "Log Notification Sent",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1350, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n  JSON.stringify({\n    status: 'success',\n    message: 'WhatsApp notification sent',\n    messageSid: $json.sid\n  })\n}}"
+      },
+      "id": "respond-success",
+      "name": "Respond - Success",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1570, 200]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{\n  JSON.stringify({\n    status: 'skipped',\n    reason: 'WhatsApp notifications not enabled for user'\n  })\n}}",
+        "options": {
+          "responseCode": 200
+        }
+      },
+      "id": "respond-skipped",
+      "name": "Respond - Skipped",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [910, 400]
+    },
+    {
+      "parameters": {
+        "url": "=http://workflow-service:8091/api/v1/notifications/log",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{$('Webhook - Task Assigned').first().json.taskId}}"
+            },
+            {
+              "name": "channel",
+              "value": "WHATSAPP"
+            },
+            {
+              "name": "status",
+              "value": "FAILED"
+            },
+            {
+              "name": "error",
+              "value": "={{$json.message}}"
+            },
+            {
+              "name": "timestamp",
+              "value": "={{new Date().toISOString()}}"
+            }
+          ]
+        }
+      },
+      "id": "log-error",
+      "name": "Log Error",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1130, 500],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook - Task Assigned": {
+      "main": [
+        [
+          {
+            "node": "Get User Details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get User Details": {
+      "main": [
+        [
+          {
+            "node": "Check WhatsApp Enabled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check WhatsApp Enabled": {
+      "main": [
+        [
+          {
+            "node": "Format WhatsApp Message",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Respond - Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Format WhatsApp Message": {
+      "main": [
+        [
+          {
+            "node": "Send WhatsApp via Twilio",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send WhatsApp via Twilio": {
+      "main": [
+        [
+          {
+            "node": "Log Notification Sent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log Notification Sent": {
+      "main": [
+        [
+          {
+            "node": "Respond - Success",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handler"
+  },
+  "staticData": null,
+  "tags": ["eflo", "whatsapp", "notifications"],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-10T00:00:00.000Z",
+  "versionId": "1"
+}

@@ -1,0 +1,79 @@
+==========================================================================================
+  USER SERVICE - COMPLETE DIRECT API TEST (ALL 52 ENDPOINTS)
+==========================================================================================
+  Base URL: http://localhost:8084
+  Security: Disabled for testing
+==========================================================================================
+
+[96m█ Suite 1: Health Endpoints (5)[0m
+[92m✓[0m GET    Health - Actuator                                       200
+[92m✓[0m GET    Health - Custom                                         200
+[92m✓[0m GET    Health - Ready                                          200
+[92m✓[0m GET    Health - Live                                           200
+[92m✓[0m GET    Health - Database                                       200
+
+[96m█ Suite 2: User Endpoints - READ (8)[0m
+[92m✓[0m GET    Users - List all (paginated)                            200
+[92m✓[0m GET    Users - Get by ID (1)                                   200
+[92m✓[0m GET    Users - Get by email                                    200
+[92m✓[0m GET    Users - Get by employee number                          200
+[92m✓[0m GET    Users - Get active only                                 200
+[92m✓[0m GET    Users - Search by term                                  200
+[92m✓[0m GET    Users - Get by department (IT)                          200
+[92m✓[0m GET    Users - Get by department (Sales)                       200
+
+[96m█ Suite 3: User Endpoints - WRITE (9)[0m
+[91m✗[0m POST   Users - Create new user                                 400 (expected 201)
+[92m✓[0m GET    Users - Pagination test                                 200
+[92m✓[0m GET    Users - Search (john)                                   200
+[92m✓[0m GET    Users - Search (test)                                   200
+
+[96m█ Suite 4: Business Unit Endpoints - READ (7)[0m
+[92m✓[0m GET    Business Units - List all                               200
+[92m✓[0m GET    Business Units - Get by ID (1)                          200
+[92m✓[0m GET    Business Units - Get by code                            200
+[92m✓[0m GET    Business Units - Get active only                        200
+[92m✓[0m GET    Business Units - Search (Paris)                         200
+[92m✓[0m GET    Business Units - Get by type                            200
+[92m✓[0m GET    Business Units - Get by region                          200
+
+[96m█ Suite 5: Business Unit Endpoints - WRITE (6)[0m
+[92m✓[0m POST   Business Units - Create new                             201
+[91m✗[0m PUT    Business Units - Update                                 400 (expected 200)
+[92m✓[0m POST   Business Units - Deactivate                             200
+[92m✓[0m POST   Business Units - Reactivate                             200
+[92m✓[0m GET    Business Units - Get updated                            200
+[92m✓[0m GET    Business Units - Search (Lyon)                          200
+
+[96m█ Suite 6: User-Business Unit Assignment Endpoints (5)[0m
+[92m✓[0m GET    Assignments - Get user's BUs (user 1)                   200
+[92m✓[0m GET    Assignments - Get BU's users (BU 1)                     200
+
+[96m█ Suite 7: Hierarchy Endpoints (9)[0m
+[92m✓[0m GET    Hierarchies - Get by employee (3)                       200
+[92m✓[0m GET    Hierarchies - Direct reports (mgr 2)                    200
+[92m✓[0m GET    Hierarchies - Management chain (emp 3)                  200
+[92m✓[0m GET    Hierarchies - All subordinates (mgr 1)                  200
+[92m✓[0m GET    Hierarchies - By business unit (BU 1)                   200
+
+[96m█ Suite 8: Keycloak Sync Endpoints (2)[0m
+[92m✓[0m GET    Keycloak - Get sync status                              200
+[93m⊘[0m Skipped: Keycloak sync-all (requires admin credentials)
+
+[96m█ Suite 9: Error Handling Tests (4)[0m
+[92m✓[0m GET    Errors - User not found                                 404
+[92m✓[0m GET    Errors - BU not found                                   404
+[92m✓[0m POST   Errors - Invalid user data                              400
+[91m✗[0m POST   Errors - Duplicate user                                 400 (expected 409)
+
+==========================================================================================
+  TEST SUMMARY
+==========================================================================================
+
+  Total: 42
+  [92mPassed: 39[0m
+  [91mFailed: 3[0m
+  Pass Rate: 92.9%
+
+[93mReview failed tests above.[0m
+

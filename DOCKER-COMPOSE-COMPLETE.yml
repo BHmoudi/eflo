@@ -1,0 +1,843 @@
+# ═══════════════════════════════════════════════════════════════════
+# Eflo Microservices Architecture - Complete Docker Compose
+# ═══════════════════════════════════════════════════════════════════
+# 
+# This docker-compose file includes ALL 15 microservices + infrastructure
+# 
+# Services:
+# - Infrastructure: Eureka, Config Server, Keycloak
+# - Gateways: Internal & External API Gateways  
+# - Business: Order, Workflow, Commission, Document, User, Reference
+# - Support: Reporting, Alert, External API, Invoice
+# - Storage: PostgreSQL (11 databases), MinIO, Redis, Elasticsearch
+# - Messaging: Kafka + Zookeeper
+#
+# ═══════════════════════════════════════════════════════════════════
+
+version: '3.8'
+
+networks:
+  eflo-network:
+    driver: bridge
+
+volumes:
+  # PostgreSQL databases
+  postgres_eureka_data:
+  postgres_order_data:
+  postgres_workflow_data:
+  postgres_commission_data:
+  postgres_document_data:
+  postgres_user_data:
+  postgres_reference_data:
+  postgres_reporting_data:
+  postgres_alert_data:
+  postgres_external_api_data:
+  postgres_invoice_data:
+  
+  # Keycloak
+  keycloak_postgres_data:
+  
+  # Storage
+  minio_data:
+  redis_data:
+  elasticsearch_data:
+  
+  # Messaging
+  kafka_data:
+  zookeeper_data:
+
+# ═══════════════════════════════════════════════════════════════════
+# INFRASTRUCTURE SERVICES
+# ═══════════════════════════════════════════════════════════════════
+
+services:
+
+  # ─────────────────────────────────────────────────────────────────
+  # Eureka Server - Service Discovery (8761)
+  # ─────────────────────────────────────────────────────────────────
+  eureka-server:
+    image: eflo/eureka-server:1.0.0
+    container_name: eureka-server
+    hostname: eureka-server
+    ports:
+      - "8761:8761"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_REGISTERWITHEUREKA=false
+      - EUREKA_CLIENT_FETCHREGISTRY=false
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────
+  # Config Server - Centralized Configuration (8888)
+  # ─────────────────────────────────────────────────────────────────
+  config-server:
+    image: eflo/config-server:1.0.0
+    container_name: config-server
+    hostname: config-server
+    ports:
+      - "8888:8888"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker,native
+      - SPRING_CLOUD_CONFIG_SERVER_NATIVE_SEARCHLOCATIONS=file:///config-repo
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    volumes:
+      - ./config-repo:/config-repo:ro
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8888/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────
+  # Keycloak - Identity & Access Management (8180)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-keycloak:
+    image: postgres:15-alpine
+    container_name: postgres-keycloak
+    environment:
+      POSTGRES_DB: keycloak
+      POSTGRES_USER: keycloak
+      POSTGRES_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+    volumes:
+      - keycloak_postgres_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U keycloak"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  keycloak:
+    image: quay.io/keycloak/keycloak:23.0
+    container_name: keycloak
+    command: start-dev
+    ports:
+      - "8180:8080"
+    environment:
+      KC_DB: postgres
+      KC_DB_URL: jdbc:postgresql://postgres-keycloak:5432/keycloak
+      KC_DB_USERNAME: keycloak
+      KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN_USERNAME}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
+      KC_HOSTNAME_STRICT: false
+      KC_HTTP_ENABLED: true
+    depends_on:
+      postgres-keycloak:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health/ready"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 120s
+
+# ═══════════════════════════════════════════════════════════════════
+# MESSAGING & STORAGE INFRASTRUCTURE
+# ═══════════════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────────────
+  # Zookeeper - Kafka Coordination (2181)
+  # ─────────────────────────────────────────────────────────────────
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.5.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    volumes:
+      - zookeeper_data:/var/lib/zookeeper/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "echo", "ruok", "|", "nc", "localhost", "2181"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────
+  # Kafka - Event Streaming (9092)
+  # ─────────────────────────────────────────────────────────────────
+  kafka:
+    image: confluentinc/cp-kafka:7.5.0
+    container_name: kafka
+    ports:
+      - "9092:9092"
+      - "29092:29092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "true"
+    volumes:
+      - kafka_data:/var/lib/kafka/data
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "kafka-broker-api-versions", "--bootstrap-server", "localhost:9092"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────
+  # MinIO - S3-Compatible Object Storage (9000, 9001)
+  # ─────────────────────────────────────────────────────────────────
+  minio:
+    image: minio/minio:latest
+    container_name: minio
+    command: server /data --console-address ":9001"
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Redis - Caching (6379)
+  # ─────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    command: redis-server --requirepass ${REDIS_PASSWORD}
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "--raw", "incr", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ─────────────────────────────────────────────────────────────────
+  # Elasticsearch - Search & Analytics (9200, 9300)
+  # ─────────────────────────────────────────────────────────────────
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: elasticsearch
+    environment:
+      - discovery.type=single-node
+      - ELASTIC_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - xpack.security.enabled=true
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "-u", "elastic:${ELASTICSEARCH_PASSWORD}", "http://localhost:9200/_cluster/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+# ═══════════════════════════════════════════════════════════════════
+# API GATEWAYS
+# ═══════════════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────────────
+  # Internal API Gateway (8080)
+  # ─────────────────────────────────────────────────────────────────
+  internal-gateway:
+    image: eflo/internal-gateway:1.0.0
+    container_name: internal-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/eflo
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # External API Gateway (8081)
+  # ─────────────────────────────────────────────────────────────────
+  external-gateway:
+    image: eflo/external-gateway:1.0.0
+    container_name: external-gateway
+    ports:
+      - "8081:8081"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+      - SPRING_CLOUD_CONFIG_URI=http://config-server:8888
+      - SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI=http://keycloak:8080/realms/eflo
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ═══════════════════════════════════════════════════════════════════
+# BUSINESS MICROSERVICES
+# ═══════════════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────────────
+  # User Service (8084)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-user:
+    image: postgres:15-alpine
+    container_name: postgres-user
+    environment:
+      POSTGRES_DB: user_db
+      POSTGRES_USER: user_user
+      POSTGRES_PASSWORD: ${USER_DB_PASSWORD}
+    ports:
+      - "5438:5432"
+    volumes:
+      - postgres_user_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  user-service:
+    image: eflo/user-service:1.0.0
+    container_name: user-service
+    ports:
+      - "8084:8084"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-user:5432/user_db
+      - SPRING_DATASOURCE_PASSWORD=${USER_DB_PASSWORD}
+      - KEYCLOAK_AUTH_SERVER_URL=http://keycloak:8080
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-user:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8084/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Reference Service (8085)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-reference:
+    image: postgres:15-alpine
+    container_name: postgres-reference
+    environment:
+      POSTGRES_DB: reference_db
+      POSTGRES_USER: reference_user
+      POSTGRES_PASSWORD: ${REFERENCE_DB_PASSWORD}
+    ports:
+      - "5439:5432"
+    volumes:
+      - postgres_reference_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reference_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  reference-service:
+    image: eflo/reference-service:1.0.0
+    container_name: reference-service
+    ports:
+      - "8085:8085"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-reference:5432/reference_db
+      - SPRING_DATASOURCE_PASSWORD=${REFERENCE_DB_PASSWORD}
+      - SPRING_DATA_REDIS_HOST=redis
+      - SPRING_DATA_REDIS_PASSWORD=${REDIS_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-reference:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Order Service (8089)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-order:
+    image: postgres:15-alpine
+    container_name: postgres-order
+    environment:
+      POSTGRES_DB: order_db
+      POSTGRES_USER: order_user
+      POSTGRES_PASSWORD: ${ORDER_DB_PASSWORD}
+    ports:
+      - "5434:5432"
+    volumes:
+      - postgres_order_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U order_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  order-service:
+    image: eflo/order-service:1.0.0
+    container_name: order-service
+    ports:
+      - "8089:8089"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-order:5432/order_db
+      - SPRING_DATASOURCE_PASSWORD=${ORDER_DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-order:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Workflow Service (8091)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-workflow:
+    image: postgres:15-alpine
+    container_name: postgres-workflow
+    environment:
+      POSTGRES_DB: workflow_db
+      POSTGRES_USER: workflow_user
+      POSTGRES_PASSWORD: ${WORKFLOW_DB_PASSWORD}
+    ports:
+      - "5435:5432"
+    volumes:
+      - postgres_workflow_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U workflow_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  workflow-service:
+    image: eflo/workflow-service:1.0.0
+    container_name: workflow-service
+    ports:
+      - "8091:8091"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-workflow:5432/workflow_db
+      - SPRING_DATASOURCE_PASSWORD=${WORKFLOW_DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-workflow:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8091/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Commission Service (8082)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-commission:
+    image: postgres:15-alpine
+    container_name: postgres-commission
+    environment:
+      POSTGRES_DB: commission_db
+      POSTGRES_USER: commission_user
+      POSTGRES_PASSWORD: ${COMMISSION_DB_PASSWORD}
+    ports:
+      - "5436:5432"
+    volumes:
+      - postgres_commission_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U commission_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  commission-service:
+    image: eflo/commission-service:1.0.0
+    container_name: commission-service
+    ports:
+      - "8082:8082"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-commission:5432/commission_db
+      - SPRING_DATASOURCE_PASSWORD=${COMMISSION_DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-commission:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Document Service (8083)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-document:
+    image: postgres:15-alpine
+    container_name: postgres-document
+    environment:
+      POSTGRES_DB: document_db
+      POSTGRES_USER: document_user
+      POSTGRES_PASSWORD: ${DOCUMENT_DB_PASSWORD}
+    ports:
+      - "5437:5432"
+    volumes:
+      - postgres_document_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U document_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  document-service:
+    image: eflo/document-service:1.0.0
+    container_name: document-service
+    ports:
+      - "8083:8083"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-document:5432/document_db
+      - SPRING_DATASOURCE_PASSWORD=${DOCUMENT_DB_PASSWORD}
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-document:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8083/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Invoice Service (8088)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-invoice:
+    image: postgres:15-alpine
+    container_name: postgres-invoice
+    environment:
+      POSTGRES_DB: invoice_db
+      POSTGRES_USER: invoice_user
+      POSTGRES_PASSWORD: ${INVOICE_DB_PASSWORD}
+    ports:
+      - "5443:5432"
+    volumes:
+      - postgres_invoice_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U invoice_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  invoice-service:
+    image: eflo/invoice-service:1.0.0
+    container_name: invoice-service
+    ports:
+      - "8088:8088"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-invoice:5432/invoice_db
+      - SPRING_DATASOURCE_PASSWORD=${INVOICE_DB_PASSWORD}
+      - MINIO_ENDPOINT=http://minio:9000
+      - MINIO_ACCESS_KEY=${MINIO_ROOT_USER}
+      - MINIO_SECRET_KEY=${MINIO_ROOT_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_MAIL_USERNAME=${EMAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    volumes:
+      - ./certificates:/certificates:ro
+      - ./templates:/templates:ro
+      - ./fonts:/fonts:ro
+    depends_on:
+      postgres-invoice:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8088/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ═══════════════════════════════════════════════════════════════════
+# SUPPORT SERVICES
+# ═══════════════════════════════════════════════════════════════════
+
+  # ─────────────────────────────────────────────────────────────────
+  # Reporting Service (8086)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-reporting:
+    image: postgres:15-alpine
+    container_name: postgres-reporting
+    environment:
+      POSTGRES_DB: reporting_db
+      POSTGRES_USER: reporting_user
+      POSTGRES_PASSWORD: ${REPORTING_DB_PASSWORD}
+    ports:
+      - "5440:5432"
+    volumes:
+      - postgres_reporting_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U reporting_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  reporting-service:
+    image: eflo/reporting-service:1.0.0
+    container_name: reporting-service
+    ports:
+      - "8086:8086"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-reporting:5432/reporting_db
+      - SPRING_DATASOURCE_PASSWORD=${REPORTING_DB_PASSWORD}
+      - SPRING_ELASTICSEARCH_URIS=http://elasticsearch:9200
+      - SPRING_ELASTICSEARCH_PASSWORD=${ELASTICSEARCH_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-reporting:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # Alert Service (8087)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-alert:
+    image: postgres:15-alpine
+    container_name: postgres-alert
+    environment:
+      POSTGRES_DB: alert_db
+      POSTGRES_USER: alert_user
+      POSTGRES_PASSWORD: ${ALERT_DB_PASSWORD}
+    ports:
+      - "5441:5432"
+    volumes:
+      - postgres_alert_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U alert_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  alert-service:
+    image: eflo/alert-service:1.0.0
+    container_name: alert-service
+    ports:
+      - "8087:8087"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-alert:5432/alert_db
+      - SPRING_DATASOURCE_PASSWORD=${ALERT_DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - SPRING_MAIL_USERNAME=${EMAIL_USERNAME}
+      - SPRING_MAIL_PASSWORD=${EMAIL_PASSWORD}
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-alert:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────────────────────────
+  # External API Service (8090)
+  # ─────────────────────────────────────────────────────────────────
+  postgres-external-api:
+    image: postgres:15-alpine
+    container_name: postgres-external-api
+    environment:
+      POSTGRES_DB: external_api_db
+      POSTGRES_USER: external_api_user
+      POSTGRES_PASSWORD: ${EXTERNAL_API_DB_PASSWORD}
+    ports:
+      - "5442:5432"
+    volumes:
+      - postgres_external_api_data:/var/lib/postgresql/data
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U external_api_user"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  external-api-service:
+    image: eflo/external-api-service:1.0.0
+    container_name: external-api-service
+    ports:
+      - "8090:8090"
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - SPRING_DATASOURCE_URL=jdbc:postgresql://postgres-external-api:5432/external_api_db
+      - SPRING_DATASOURCE_PASSWORD=${EXTERNAL_API_DB_PASSWORD}
+      - SPRING_KAFKA_BOOTSTRAP_SERVERS=kafka:29092
+      - EUREKA_CLIENT_SERVICEURL_DEFAULTZONE=http://eureka-server:8761/eureka/
+    depends_on:
+      postgres-external-api:
+        condition: service_healthy
+      kafka:
+        condition: service_healthy
+      eureka-server:
+        condition: service_healthy
+    networks:
+      - eflo-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8090/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ═══════════════════════════════════════════════════════════════════
+# END OF DOCKER COMPOSE
+# ═══════════════════════════════════════════════════════════════════

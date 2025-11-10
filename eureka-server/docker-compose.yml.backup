@@ -1,0 +1,91 @@
+version: '3.8'
+
+# =====================================================
+# Eureka Server - Docker Compose Configuration
+# =====================================================
+# This configuration provides:
+# - Standalone Eureka Server deployment
+# - Health checks and monitoring
+# - Persistent logging
+# - Network isolation
+# - Resource limits
+# =====================================================
+
+services:
+  eureka-server:
+    # Build configuration
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    # Container configuration
+    container_name: eureka-server
+    hostname: eureka-server
+
+    # Image name (if using pre-built image)
+    image: eflo/eureka-server:1.0.0
+
+    # Port mapping
+    ports:
+      - "8761:8761"
+
+    # Environment variables
+    environment:
+      - SPRING_PROFILES_ACTIVE=docker
+      - EUREKA_CLIENT_REGISTERWITHEUREKA=false
+      - EUREKA_CLIENT_FETCHREGISTRY=false
+      - JAVA_OPTS=-Xms256m -Xmx512m -XX:+UseG1GC
+
+    # Volume mounts for logs
+    volumes:
+      - eureka-logs:/var/log/eureka-server
+
+    # Network configuration
+    networks:
+      - eflo-network
+
+    # Health check
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8761/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 768M
+        reservations:
+          cpus: '0.5'
+          memory: 512M
+
+    # Restart policy
+    restart: unless-stopped
+
+    # Labels for organization
+    labels:
+      - "com.eflo.service=eureka-server"
+      - "com.eflo.description=Service Discovery Server"
+      - "com.eflo.version=1.0.0"
+
+# =====================================================
+# Networks
+# =====================================================
+networks:
+  eflo-network:
+    driver: bridge
+    name: eflo-network
+    ipam:
+      config:
+        - subnet: 172.28.0.0/16
+
+# =====================================================
+# Volumes
+# =====================================================
+volumes:
+  eureka-logs:
+    driver: local
+    name: eureka-server-logs

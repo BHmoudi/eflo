@@ -1,0 +1,403 @@
+{
+  "name": "Task Validation with External APIs",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "task-validation",
+        "responseMode": "responseNode",
+        "options": {}
+      },
+      "id": "webhook-trigger",
+      "name": "Webhook - Validate Task",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [250, 300],
+      "webhookId": "task-validation"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extract validation data from webhook\nconst taskData = $json.taskData || {};\n\nreturn {\n  json: {\n    taskId: $json.taskId,\n    postalCode: taskData.postalCode || '',\n    vatNumber: taskData.vatNumber || '',\n    iban: taskData.iban || '',\n    email: taskData.email || '',\n    deliveryAddress: taskData.deliveryAddress || '',\n    validations: []\n  }\n};"
+      },
+      "id": "extract-data",
+      "name": "Extract Validation Data",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [470, 300]
+    },
+    {
+      "parameters": {
+        "url": "=https://api-adresse.data.gouv.fr/search/?q={{encodeURIComponent($json.postalCode)}}",
+        "options": {}
+      },
+      "id": "validate-postal",
+      "name": "Validate Postal Code (FR)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 100]
+    },
+    {
+      "parameters": {
+        "url": "=https://ec.europa.eu/taxation_customs/vies/rest-api/check-vat-number",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "countryCode",
+              "value": "={{$('Extract Validation Data').first().json.vatNumber.substring(0, 2)}}"
+            },
+            {
+              "name": "vatNumber",
+              "value": "={{$('Extract Validation Data').first().json.vatNumber.substring(2)}}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "validate-vat",
+      "name": "Validate VAT Number (EU VIES)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 250]
+    },
+    {
+      "parameters": {
+        "url": "=https://openiban.com/validate/{{$('Extract Validation Data').first().json.iban}}?getBIC=true&validateBankCode=true",
+        "options": {}
+      },
+      "id": "validate-iban",
+      "name": "Validate IBAN",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [690, 400]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Validate email format using regex\nconst email = $('Extract Validation Data').first().json.email;\n\nconst emailRegex = /^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/;\nconst isValid = emailRegex.test(email);\n\nreturn {\n  json: {\n    field: 'email',\n    value: email,\n    valid: isValid,\n    message: isValid ? 'Valid email format' : 'Invalid email format'\n  }\n};"
+      },
+      "id": "validate-email",
+      "name": "Validate Email Format",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [690, 550]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "id": "combine-validations",
+      "name": "Combine All Validations",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [910, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Process all validation results\nconst postalResult = $('Validate Postal Code (FR)').first().json;\nconst vatResult = $('Validate VAT Number (EU VIES)').first().json;\nconst ibanResult = $('Validate IBAN').first().json;\nconst emailResult = $('Validate Email Format').first().json;\nconst originalData = $('Extract Validation Data').first().json;\n\nconst validations = [\n  {\n    field: 'postalCode',\n    value: originalData.postalCode,\n    valid: postalResult.features && postalResult.features.length > 0,\n    message: postalResult.features && postalResult.features.length > 0 \n      ? `Valid postal code: ${postalResult.features[0].properties.label}` \n      : 'Postal code not found',\n    details: postalResult.features ? postalResult.features[0] : null\n  },\n  {\n    field: 'vatNumber',\n    value: originalData.vatNumber,\n    valid: vatResult.valid === true,\n    message: vatResult.valid ? `Valid VAT: ${vatResult.name}` : 'Invalid VAT number',\n    details: vatResult\n  },\n  {\n    field: 'iban',\n    value: originalData.iban,\n    valid: ibanResult.valid === true,\n    message: ibanResult.valid ? `Valid IBAN: ${ibanResult.bankData?.name || 'Bank verified'}` : 'Invalid IBAN',\n    details: ibanResult\n  },\n  {\n    field: 'email',\n    value: emailResult.value,\n    valid: emailResult.valid,\n    message: emailResult.message,\n    details: null\n  }\n];\n\nconst allValid = validations.every(v => v.valid);\nconst errors = validations.filter(v => !v.valid);\n\nreturn {\n  json: {\n    taskId: originalData.taskId,\n    status: allValid ? 'VALID' : 'INVALID',\n    allValid: allValid,\n    validations: validations,\n    errors: errors,\n    errorCount: errors.length,\n    timestamp: new Date().toISOString()\n  }\n};"
+      },
+      "id": "aggregate-results",
+      "name": "Aggregate Validation Results",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [1130, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.allValid}}",
+              "value2": true
+            }
+          ]
+        }
+      },
+      "id": "check-all-valid",
+      "name": "Check All Valid",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [1350, 300]
+    },
+    {
+      "parameters": {
+        "url": "=http://workflow-service:8091/api/v1/tasks/{{$json.taskId}}/complete",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "VALIDATED"
+            },
+            {
+              "name": "validationResults",
+              "value": "={{JSON.stringify($json.validations)}}"
+            },
+            {
+              "name": "validatedAt",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        }
+      },
+      "id": "complete-task",
+      "name": "Complete Task - Valid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1570, 200],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://workflow-service:8091/api/v1/tasks/{{$json.taskId}}/reject",
+        "method": "POST",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpBasicAuth",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "status",
+              "value": "VALIDATION_FAILED"
+            },
+            {
+              "name": "errors",
+              "value": "={{JSON.stringify($json.errors)}}"
+            },
+            {
+              "name": "errorCount",
+              "value": "={{$json.errorCount}}"
+            },
+            {
+              "name": "rejectedAt",
+              "value": "={{$json.timestamp}}"
+            }
+          ]
+        }
+      },
+      "id": "reject-task",
+      "name": "Reject Task - Invalid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1570, 400],
+      "credentials": {
+        "httpBasicAuth": {
+          "id": "1",
+          "name": "Eflo Internal API"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "=http://localhost:5678/webhook/whatsapp-send",
+        "method": "POST",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "taskId",
+              "value": "={{$json.taskId}}"
+            },
+            {
+              "name": "message",
+              "value": "=\u274c Validation échouée\n\nErreurs trouvées : {{$json.errorCount}}\n\n{{$json.errors.map(e => `• ${e.field}: ${e.message}`).join('\\n')}}\n\nVeuillez corriger ces erreurs et soumettre à nouveau."
+            }
+          ]
+        }
+      },
+      "id": "notify-invalid",
+      "name": "Notify User - Invalid",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 3,
+      "position": [1790, 400]
+    },
+    {
+      "parameters": {
+        "respondWith": "json",
+        "responseBody": "={{JSON.stringify($json)}}"
+      },
+      "id": "respond-webhook",
+      "name": "Respond to Webhook",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [2010, 300]
+    }
+  ],
+  "connections": {
+    "Webhook - Validate Task": {
+      "main": [
+        [
+          {
+            "node": "Extract Validation Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract Validation Data": {
+      "main": [
+        [
+          {
+            "node": "Validate Postal Code (FR)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Validate VAT Number (EU VIES)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Validate IBAN",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Validate Email Format",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate Postal Code (FR)": {
+      "main": [
+        [
+          {
+            "node": "Combine All Validations",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Validate VAT Number (EU VIES)": {
+      "main": [
+        [
+          {
+            "node": "Combine All Validations",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Validate IBAN": {
+      "main": [
+        [
+          {
+            "node": "Combine All Validations",
+            "type": "main",
+            "index": 2
+          }
+        ]
+      ]
+    },
+    "Validate Email Format": {
+      "main": [
+        [
+          {
+            "node": "Combine All Validations",
+            "type": "main",
+            "index": 3
+          }
+        ]
+      ]
+    },
+    "Combine All Validations": {
+      "main": [
+        [
+          {
+            "node": "Aggregate Validation Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate Validation Results": {
+      "main": [
+        [
+          {
+            "node": "Check All Valid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check All Valid": {
+      "main": [
+        [
+          {
+            "node": "Complete Task - Valid",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Reject Task - Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Complete Task - Valid": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Reject Task - Invalid": {
+      "main": [
+        [
+          {
+            "node": "Notify User - Invalid",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Notify User - Invalid": {
+      "main": [
+        [
+          {
+            "node": "Respond to Webhook",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": "error-handler"
+  },
+  "staticData": null,
+  "tags": ["eflo", "validation", "external-api"],
+  "triggerCount": 0,
+  "updatedAt": "2025-10-10T00:00:00.000Z",
+  "versionId": "1"
+}
