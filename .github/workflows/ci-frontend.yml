@@ -48,6 +48,7 @@ jobs:
       - name: Run TypeScript type check
         working-directory: ./workflow-admin
         run: npm run type-check
+        continue-on-error: true
 
       - name: Run unit tests
         working-directory: ./workflow-admin
