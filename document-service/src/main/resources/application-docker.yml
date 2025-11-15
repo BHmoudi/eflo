@@ -32,11 +32,11 @@ feign:
   client:
     config:
       order-service:
-        url: http://order-service:8081
+        url: http://order-service:8089
       workflow-service:
-        url: http://workflow-service:8082
+        url: http://workflow-service:8091
       user-service:
-        url: http://user-service:8085
+        url: http://user-service:8084
 
 logging:
   level:

@@ -10,6 +10,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
@@ -339,7 +340,7 @@ public class MoveImportService {
 
         if (order.getBasePrice().compareTo(BigDecimal.ZERO) > 0) {
             BigDecimal marginPercentage = order.getNetMargin()
-                    .divide(order.getBasePrice(), 4, BigDecimal.ROUND_HALF_UP)
+                    .divide(order.getBasePrice(), 4, RoundingMode.HALF_UP)
                     .multiply(BigDecimal.valueOf(100));
             order.setMarginPercentage(marginPercentage);
         }

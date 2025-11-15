@@ -12,7 +12,7 @@ const nextConfig = {
       },
       {
         source: '/api/users/:path*',
-        destination: 'http://localhost:8082/api/v1/:path*',
+        destination: 'http://localhost:8084/api/v1/:path*',
       },
     ];
   },

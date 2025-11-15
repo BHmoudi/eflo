@@ -18,6 +18,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
+
+import java.math.RoundingMode;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
@@ -212,7 +214,7 @@ public class CommissionCalculationService {
         // Recalculate tax
         BigDecimal taxRate = DEFAULT_TAX_RATE.divide(BigDecimal.valueOf(100));
         BigDecimal adjustedTax = adjustedAmount.multiply(taxRate)
-                .setScale(2, BigDecimal.ROUND_HALF_UP);
+                .setScale(2, RoundingMode.HALF_UP);
         commission.setTotalCommissionTax(adjustedTax);
         commission.setTotalCommissionInclTax(adjustedAmount.add(adjustedTax));
 

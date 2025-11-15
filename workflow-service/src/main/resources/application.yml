@@ -156,13 +156,13 @@ eflo:
 
     integration:
       order-service:
-        url: http://localhost:8083
+        url: http://localhost:8089
         timeout: 5000
       document-service:
-        url: http://localhost:8087
+        url: http://localhost:8083
         timeout: 5000
       user-service:
-        url: http://localhost:8082
+        url: http://localhost:8084
         timeout: 5000
 
 logging:
