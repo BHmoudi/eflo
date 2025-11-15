@@ -1,0 +1,197 @@
+name: Docker Build & Push
+
+on:
+  push:
+    branches:
+      - main
+      - develop
+    tags:
+      - 'v*.*.*'
+  workflow_dispatch:
+    inputs:
+      services:
+        description: 'Services to build (comma-separated, or "all")'
+        required: true
+        default: 'all'
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/eflo
+
+jobs:
+  setup:
+    name: Setup Build Matrix
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Determine version
+        id: version
+        run: |
+          if [[ $GITHUB_REF == refs/tags/* ]]; then
+            VERSION=${GITHUB_REF#refs/tags/}
+          else
+            VERSION=$(git rev-parse --short HEAD)
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Building version: $VERSION"
+
+      - name: Set build matrix
+        id: set-matrix
+        run: |
+          if [[ "${{ github.event.inputs.services }}" == "all" ]] || [[ -z "${{ github.event.inputs.services }}" ]]; then
+            SERVICES='["eureka-server","config-server","internal-api-gateway","external-api-gateway","order-service","workflow-service","commission-service","document-service","document-generation-service","user-service","workflow-admin"]'
+          else
+            SERVICES=$(echo "${{ github.event.inputs.services }}" | jq -R -s -c 'split(",") | map(select(length > 0))')
+          fi
+          echo "matrix=$SERVICES" >> $GITHUB_OUTPUT
+
+  build-java-services:
+    name: Build & Push - ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    needs: setup
+    strategy:
+      fail-fast: false
+      matrix:
+        service: ${{ fromJSON(needs.setup.outputs.matrix) }}
+        exclude:
+          - service: workflow-admin
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.setup.outputs.version }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./${{ matrix.service }}
+          file: ./${{ matrix.service }}/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          platforms: linux/amd64,linux/arm64
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ needs.setup.outputs.version }}
+          artifact-name: sbom-${{ matrix.service }}.spdx.json
+          output-file: ./sbom-${{ matrix.service }}.spdx.json
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@master
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ needs.setup.outputs.version }}
+          format: 'sarif'
+          output: 'trivy-results-${{ matrix.service }}.sarif'
+
+      - name: Upload Trivy results to GitHub Security
+        uses: github/codeql-action/upload-sarif@v3
+        if: always()
+        with:
+          sarif_file: 'trivy-results-${{ matrix.service }}.sarif'
+          category: ${{ matrix.service }}
+
+  build-frontend:
+    name: Build & Push - Workflow Admin
+    runs-on: ubuntu-latest
+    needs: setup
+    if: contains(fromJSON(needs.setup.outputs.matrix), 'workflow-admin')
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}/workflow-admin
+          tags: |
+            type=ref,event=branch
+            type=ref,event=pr
+            type=semver,pattern={{version}}
+            type=semver,pattern={{major}}.{{minor}}
+            type=sha,prefix={{branch}}-
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ needs.setup.outputs.version }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: ./workflow-admin
+          file: ./workflow-admin/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NEXT_PUBLIC_API_URL=http://localhost:8080
+          platforms: linux/amd64,linux/arm64
+
+  image-scan-summary:
+    name: Image Scan Summary
+    runs-on: ubuntu-latest
+    needs: [build-java-services, build-frontend]
+    if: always()
+
+    steps:
+      - name: Check build status
+        run: |
+          echo "Docker build jobs completed"
+          echo "Java Services Status: ${{ needs.build-java-services.result }}"
+          echo "Frontend Status: ${{ needs.build-frontend.result }}"
+
+      - name: Notify on failure
+        if: needs.build-java-services.result == 'failure' || needs.build-frontend.result == 'failure'
+        run: |
+          echo "::error::One or more Docker images failed to build"
+          exit 1

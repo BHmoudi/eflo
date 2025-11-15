@@ -1,0 +1,23 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eflo
+  labels:
+    name: eflo
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eflo-dev
+  labels:
+    name: eflo-dev
+    environment: development
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: eflo-staging
+  labels:
+    name: eflo-staging
+    environment: staging

@@ -1,0 +1,493 @@
+---
+# Order Service PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-order
+  namespace: eflo
+  labels:
+    app: postgres-order
+    tier: database
+spec:
+  serviceName: postgres-order
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-order
+  template:
+    metadata:
+      labels:
+        app: postgres-order
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "order_db"
+        - name: POSTGRES_USER
+          value: "order_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: ORDER_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - order_user
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          exec:
+            command:
+            - pg_isready
+            - -U
+            - order_user
+          initialDelaySeconds: 5
+          periodSeconds: 10
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-order
+  namespace: eflo
+  labels:
+    app: postgres-order
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+    protocol: TCP
+  selector:
+    app: postgres-order
+  clusterIP: None
+---
+# Workflow Service PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-workflow
+  namespace: eflo
+  labels:
+    app: postgres-workflow
+    tier: database
+spec:
+  serviceName: postgres-workflow
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-workflow
+  template:
+    metadata:
+      labels:
+        app: postgres-workflow
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+          name: postgres
+        env:
+        - name: POSTGRES_DB
+          value: "workflow_db"
+        - name: POSTGRES_USER
+          value: "workflow_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: WORKFLOW_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-workflow
+  namespace: eflo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5432
+    targetPort: 5432
+  selector:
+    app: postgres-workflow
+  clusterIP: None
+---
+# Commission Service PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-commission
+  namespace: eflo
+spec:
+  serviceName: postgres-commission
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-commission
+  template:
+    metadata:
+      labels:
+        app: postgres-commission
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "commission_db"
+        - name: POSTGRES_USER
+          value: "commission_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: COMMISSION_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-commission
+  namespace: eflo
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-commission
+  clusterIP: None
+---
+# Document Service PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-document
+  namespace: eflo
+spec:
+  serviceName: postgres-document
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-document
+  template:
+    metadata:
+      labels:
+        app: postgres-document
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "document_db"
+        - name: POSTGRES_USER
+          value: "document_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: DOCUMENT_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-document
+  namespace: eflo
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-document
+  clusterIP: None
+---
+# User Service PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-user
+  namespace: eflo
+spec:
+  serviceName: postgres-user
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-user
+  template:
+    metadata:
+      labels:
+        app: postgres-user
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "user_db"
+        - name: POSTGRES_USER
+          value: "user_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: USER_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-user
+  namespace: eflo
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-user
+  clusterIP: None
+---
+# Keycloak PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-keycloak
+  namespace: eflo
+spec:
+  serviceName: postgres-keycloak
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-keycloak
+  template:
+    metadata:
+      labels:
+        app: postgres-keycloak
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "keycloak_db"
+        - name: POSTGRES_USER
+          value: "keycloak_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: KEYCLOAK_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-keycloak
+  namespace: eflo
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-keycloak
+  clusterIP: None
+---
+# n8n PostgreSQL
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-n8n
+  namespace: eflo
+spec:
+  serviceName: postgres-n8n
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-n8n
+  template:
+    metadata:
+      labels:
+        app: postgres-n8n
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "n8n_db"
+        - name: POSTGRES_USER
+          value: "n8n_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: N8N_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-n8n
+  namespace: eflo
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-n8n
+  clusterIP: None

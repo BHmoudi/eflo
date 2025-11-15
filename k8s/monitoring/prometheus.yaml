@@ -1,0 +1,181 @@
+---
+# Prometheus ServiceMonitor for all Eflo services
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: eflo-services
+  namespace: eflo
+  labels:
+    app: eflo
+spec:
+  selector:
+    matchLabels:
+      tier: business
+  endpoints:
+  - port: http
+    path: /actuator/prometheus
+    interval: 30s
+
+---
+# Prometheus ServiceMonitor for infrastructure services
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: eflo-infrastructure
+  namespace: eflo
+  labels:
+    app: eflo
+spec:
+  selector:
+    matchLabels:
+      tier: infrastructure
+  endpoints:
+  - port: http
+    path: /actuator/prometheus
+    interval: 30s
+
+---
+# Prometheus ServiceMonitor for gateways
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: eflo-gateways
+  namespace: eflo
+  labels:
+    app: eflo
+spec:
+  selector:
+    matchLabels:
+      tier: gateway
+  endpoints:
+  - port: http
+    path: /actuator/prometheus
+    interval: 30s
+
+---
+# PrometheusRule for alerts
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: eflo-alerts
+  namespace: eflo
+  labels:
+    app: eflo
+spec:
+  groups:
+  - name: eflo-services
+    interval: 30s
+    rules:
+    - alert: ServiceDown
+      expr: up{job=~".*eflo.*"} == 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Service {{ $labels.job }} is down"
+        description: "{{ $labels.job }} has been down for more than 5 minutes"
+
+    - alert: HighMemoryUsage
+      expr: (container_memory_usage_bytes{namespace="eflo"} / container_spec_memory_limit_bytes{namespace="eflo"}) > 0.9
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage on {{ $labels.pod }}"
+        description: "Memory usage is above 90% for {{ $labels.pod }}"
+
+    - alert: HighCPUUsage
+      expr: rate(container_cpu_usage_seconds_total{namespace="eflo"}[5m]) > 0.8
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage on {{ $labels.pod }}"
+        description: "CPU usage is above 80% for {{ $labels.pod }}"
+
+    - alert: PodCrashLooping
+      expr: rate(kube_pod_container_status_restarts_total{namespace="eflo"}[15m]) > 0
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Pod {{ $labels.pod }} is crash looping"
+        description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes"
+
+    - alert: HighErrorRate
+      expr: rate(http_server_requests_seconds_count{status=~"5..",namespace="eflo"}[5m]) > 0.05
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate on {{ $labels.job }}"
+        description: "Error rate is above 5% for {{ $labels.job }}"
+
+    - alert: DatabaseConnectionPoolExhausted
+      expr: hikaricp_connections_active{namespace="eflo"} / hikaricp_connections_max{namespace="eflo"} > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "Database connection pool near exhaustion for {{ $labels.job }}"
+        description: "Connection pool usage is above 90% for {{ $labels.job }}"
+
+    - alert: KafkaConsumerLag
+      expr: kafka_consumer_lag{namespace="eflo"} > 1000
+      for: 10m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High Kafka consumer lag for {{ $labels.topic }}"
+        description: "Consumer lag is {{ $value }} messages for {{ $labels.topic }}"
+
+---
+# Grafana Dashboard ConfigMap
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eflo-grafana-dashboards
+  namespace: eflo
+  labels:
+    grafana_dashboard: "1"
+data:
+  eflo-overview.json: |
+    {
+      "dashboard": {
+        "title": "Eflo Platform Overview",
+        "panels": [
+          {
+            "title": "Service Health",
+            "targets": [
+              {
+                "expr": "up{job=~\".*eflo.*\"}"
+              }
+            ]
+          },
+          {
+            "title": "Request Rate",
+            "targets": [
+              {
+                "expr": "rate(http_server_requests_seconds_count{namespace=\"eflo\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Error Rate",
+            "targets": [
+              {
+                "expr": "rate(http_server_requests_seconds_count{status=~\"5..\",namespace=\"eflo\"}[5m])"
+              }
+            ]
+          },
+          {
+            "title": "Response Time (p95)",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_server_requests_seconds_bucket{namespace=\"eflo\"}[5m]))"
+              }
+            ]
+          }
+        ]
+      }
+    }

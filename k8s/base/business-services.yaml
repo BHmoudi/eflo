@@ -1,0 +1,499 @@
+# This file contains all business microservices deployments
+# Includes: workflow-service, commission-service, document-service, user-service, document-generation-service
+
+---
+# Workflow Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: workflow-service
+  namespace: eflo
+  labels:
+    app: workflow-service
+    tier: business
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: workflow-service
+  template:
+    metadata:
+      labels:
+        app: workflow-service
+        tier: business
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-workflow 5432; do sleep 2; done;']
+      - name: wait-for-kafka
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z kafka 9092; do sleep 2; done;']
+      containers:
+      - name: workflow-service
+        image: ghcr.io/eflo/workflow-service:latest
+        ports:
+        - containerPort: 8091
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-workflow:5432/workflow_db"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: WORKFLOW_DB_PASSWORD
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8091
+          initialDelaySeconds: 120
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8091
+          initialDelaySeconds: 90
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: workflow-service
+  namespace: eflo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8091
+    targetPort: 8091
+  selector:
+    app: workflow-service
+---
+# Commission Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: commission-service
+  namespace: eflo
+  labels:
+    app: commission-service
+    tier: business
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: commission-service
+  template:
+    metadata:
+      labels:
+        app: commission-service
+        tier: business
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-commission 5432; do sleep 2; done;']
+      containers:
+      - name: commission-service
+        image: ghcr.io/eflo/commission-service:latest
+        ports:
+        - containerPort: 8082
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-commission:5432/commission_db"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: COMMISSION_DB_PASSWORD
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8082
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8082
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: commission-service
+  namespace: eflo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8082
+    targetPort: 8082
+  selector:
+    app: commission-service
+---
+# Document Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-service
+  namespace: eflo
+  labels:
+    app: document-service
+    tier: business
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: document-service
+  template:
+    metadata:
+      labels:
+        app: document-service
+        tier: business
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-document 5432; do sleep 2; done;']
+      - name: wait-for-minio
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://minio:9000/minio/health/ready; do sleep 5; done;']
+      containers:
+      - name: document-service
+        image: ghcr.io/eflo/document-service:latest
+        ports:
+        - containerPort: 8083
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-document:5432/document_db"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: DOCUMENT_DB_PASSWORD
+        - name: MINIO_ENDPOINT
+          value: "http://minio:9000"
+        - name: MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: MINIO_ROOT_USER
+        - name: MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: MINIO_ROOT_PASSWORD
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8083
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8083
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-service
+  namespace: eflo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8083
+    targetPort: 8083
+  selector:
+    app: document-service
+---
+# User Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: eflo
+  labels:
+    app: user-service
+    tier: business
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: user-service
+  template:
+    metadata:
+      labels:
+        app: user-service
+        tier: business
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-user 5432; do sleep 2; done;']
+      - name: wait-for-keycloak
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://keycloak:8180/health/ready; do sleep 5; done;']
+      containers:
+      - name: user-service
+        image: ghcr.io/eflo/user-service:latest
+        ports:
+        - containerPort: 8084
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-user:5432/user_db"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: USER_DB_PASSWORD
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        - name: KEYCLOAK_AUTH_SERVER_URL
+          value: "http://keycloak:8180"
+        - name: KEYCLOAK_REALM
+          value: "eflo"
+        - name: KEYCLOAK_ADMIN_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: KEYCLOAK_ADMIN_USERNAME
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: KEYCLOAK_ADMIN_PASSWORD
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8084
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8084
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: eflo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8084
+    targetPort: 8084
+  selector:
+    app: user-service
+---
+# Document Generation Service
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: document-generation-service
+  namespace: eflo
+  labels:
+    app: document-generation-service
+    tier: business
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: document-generation-service
+  template:
+    metadata:
+      labels:
+        app: document-generation-service
+        tier: business
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-docgen 5432; do sleep 2; done;']
+      containers:
+      - name: document-generation-service
+        image: ghcr.io/eflo/document-generation-service:latest
+        ports:
+        - containerPort: 8085
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: SPRING_DATASOURCE_URL
+          value: "jdbc:postgresql://postgres-docgen:5432/docgen_db"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: DOCGEN_DB_PASSWORD
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8085
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8085
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: document-generation-service
+  namespace: eflo
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8085
+    targetPort: 8085
+  selector:
+    app: document-generation-service
+---
+# Add postgres-docgen StatefulSet
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: postgres-docgen
+  namespace: eflo
+spec:
+  serviceName: postgres-docgen
+  replicas: 1
+  selector:
+    matchLabels:
+      app: postgres-docgen
+  template:
+    metadata:
+      labels:
+        app: postgres-docgen
+        tier: database
+    spec:
+      containers:
+      - name: postgres
+        image: postgres:15-alpine
+        ports:
+        - containerPort: 5432
+        env:
+        - name: POSTGRES_DB
+          value: "docgen_db"
+        - name: POSTGRES_USER
+          value: "docgen_user"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: DOCGEN_DB_PASSWORD
+        - name: PGDATA
+          value: /var/lib/postgresql/data/pgdata
+        volumeMounts:
+        - name: postgres-storage
+          mountPath: /var/lib/postgresql/data
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "250m"
+  volumeClaimTemplates:
+  - metadata:
+      name: postgres-storage
+    spec:
+      accessModes: ["ReadWriteOnce"]
+      resources:
+        requests:
+          storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: postgres-docgen
+  namespace: eflo
+spec:
+  ports:
+  - port: 5432
+  selector:
+    app: postgres-docgen
+  clusterIP: None

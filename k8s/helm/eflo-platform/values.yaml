@@ -1,0 +1,350 @@
+# Eflo Platform - Helm Chart Values
+# Default values for eflo-platform
+
+global:
+  namespace: eflo
+  image:
+    registry: ghcr.io
+    repository: eflo
+    tag: latest
+    pullPolicy: IfNotPresent
+
+  imagePullSecrets:
+    - name: ghcr-secret
+
+  # Environment
+  environment: production
+
+  # Resource defaults
+  resources:
+    small:
+      requests:
+        memory: "256Mi"
+        cpu: "100m"
+      limits:
+        memory: "512Mi"
+        cpu: "500m"
+    medium:
+      requests:
+        memory: "512Mi"
+        cpu: "250m"
+      limits:
+        memory: "1Gi"
+        cpu: "1000m"
+    large:
+      requests:
+        memory: "1Gi"
+        cpu: "500m"
+      limits:
+        memory: "2Gi"
+        cpu: "2000m"
+
+# Infrastructure Services
+eureka:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: eureka-server
+  service:
+    type: ClusterIP
+    port: 8761
+  resources: medium
+  credentials:
+    username: eureka
+    # Password should be provided via secrets
+
+configServer:
+  enabled: true
+  replicaCount: 1
+  image:
+    name: config-server
+  service:
+    type: ClusterIP
+    port: 8888
+  resources: medium
+  profile: kubernetes,native
+
+# Databases
+postgresql:
+  enabled: true
+  auth:
+    postgresPassword: ""  # Set via secrets
+  primary:
+    persistence:
+      enabled: true
+      size: 10Gi
+
+  # Multiple database instances
+  databases:
+    order:
+      enabled: true
+      name: order_db
+      user: order_user
+      storage: 10Gi
+    workflow:
+      enabled: true
+      name: workflow_db
+      user: workflow_user
+      storage: 10Gi
+    commission:
+      enabled: true
+      name: commission_db
+      user: commission_user
+      storage: 5Gi
+    document:
+      enabled: true
+      name: document_db
+      user: document_user
+      storage: 10Gi
+    user:
+      enabled: true
+      name: user_db
+      user: user_user
+      storage: 5Gi
+    keycloak:
+      enabled: true
+      name: keycloak_db
+      user: keycloak_user
+      storage: 5Gi
+    n8n:
+      enabled: true
+      name: n8n_db
+      user: n8n_user
+      storage: 5Gi
+    docgen:
+      enabled: true
+      name: docgen_db
+      user: docgen_user
+      storage: 5Gi
+
+# Messaging
+kafka:
+  enabled: true
+  replicaCount: 1
+  zookeeper:
+    enabled: true
+    replicaCount: 1
+  persistence:
+    enabled: true
+    size: 20Gi
+  resources: large
+
+# Identity & Access Management
+keycloak:
+  enabled: true
+  replicaCount: 1
+  image:
+    registry: quay.io
+    repository: keycloak/keycloak
+    tag: "23.0.0"
+  service:
+    type: LoadBalancer
+    port: 8180
+  resources: medium
+  admin:
+    username: admin
+    # Password via secrets
+  realm: eflo
+  importRealm: true
+
+# Object Storage
+minio:
+  enabled: true
+  mode: standalone
+  replicas: 1
+  persistence:
+    enabled: true
+    size: 50Gi
+  service:
+    type: LoadBalancer
+    port: 9000
+    consolePort: 9001
+  resources: medium
+  auth:
+    rootUser: minioadmin
+    # rootPassword via secrets
+
+# API Gateways
+internalGateway:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: internal-api-gateway
+  service:
+    type: ClusterIP
+    port: 8080
+  resources: medium
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+externalGateway:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: external-api-gateway
+  service:
+    type: LoadBalancer
+    port: 8081
+  resources: medium
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+# Business Services
+orderService:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: order-service
+  service:
+    type: ClusterIP
+    port: 8089
+  resources: medium
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+workflowService:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: workflow-service
+  service:
+    type: ClusterIP
+    port: 8091
+  resources: medium
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 10
+    targetCPU: 70
+
+commissionService:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: commission-service
+  service:
+    type: ClusterIP
+    port: 8082
+  resources: small
+  hpa:
+    enabled: false
+
+documentService:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: document-service
+  service:
+    type: ClusterIP
+    port: 8083
+  resources: medium
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPU: 70
+
+userService:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: user-service
+  service:
+    type: ClusterIP
+    port: 8084
+  resources: medium
+  hpa:
+    enabled: false
+
+documentGenerationService:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: document-generation-service
+  service:
+    type: ClusterIP
+    port: 8085
+  resources: medium
+  hpa:
+    enabled: false
+
+# Automation
+n8n:
+  enabled: true
+  replicaCount: 1
+  image:
+    registry: docker.io
+    repository: n8nio/n8n
+    tag: latest
+  service:
+    type: LoadBalancer
+    port: 5678
+  resources: medium
+  persistence:
+    enabled: true
+    size: 10Gi
+  ai:
+    enabled: true
+    provider: openai
+    model: gpt-4
+  whatsapp:
+    enabled: true
+    provider: twilio
+
+# Frontend
+workflowAdmin:
+  enabled: true
+  replicaCount: 2
+  image:
+    name: workflow-admin
+  service:
+    type: LoadBalancer
+    port: 3001
+  resources: small
+  hpa:
+    enabled: true
+    minReplicas: 2
+    maxReplicas: 5
+    targetCPU: 70
+
+# Monitoring & Observability
+monitoring:
+  enabled: false
+  prometheus:
+    enabled: false
+  grafana:
+    enabled: false
+  loki:
+    enabled: false
+
+# Ingress
+ingress:
+  enabled: false
+  className: nginx
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  hosts:
+    - host: eflo.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: external-api-gateway
+    - host: admin.eflo.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+          service: workflow-admin
+  tls:
+    - secretName: eflo-tls
+      hosts:
+        - eflo.example.com
+        - admin.eflo.example.com

@@ -1,0 +1,125 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak
+  namespace: eflo
+  labels:
+    app: keycloak
+    tier: infrastructure
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: keycloak
+  template:
+    metadata:
+      labels:
+        app: keycloak
+        tier: infrastructure
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-keycloak 5432; do echo waiting for postgres-keycloak; sleep 2; done;']
+      containers:
+      - name: keycloak
+        image: quay.io/keycloak/keycloak:23.0.0
+        args: ["start-dev", "--import-realm"]
+        ports:
+        - containerPort: 8180
+          name: http
+        env:
+        - name: KC_DB
+          value: "postgres"
+        - name: KC_DB_URL
+          value: "jdbc:postgresql://postgres-keycloak:5432/keycloak_db"
+        - name: KC_DB_USERNAME
+          value: "keycloak_user"
+        - name: KC_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: KEYCLOAK_DB_PASSWORD
+        - name: KC_HTTP_PORT
+          value: "8180"
+        - name: KC_HOSTNAME_URL
+          value: "http://keycloak:8180"
+        - name: KEYCLOAK_ADMIN
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: KEYCLOAK_ADMIN_USERNAME
+        - name: KEYCLOAK_ADMIN_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: KEYCLOAK_ADMIN_PASSWORD
+        - name: KC_HOSTNAME_STRICT
+          value: "false"
+        - name: KC_HTTP_ENABLED
+          value: "true"
+        - name: KC_HEALTH_ENABLED
+          value: "true"
+        volumeMounts:
+        - name: keycloak-config
+          mountPath: /opt/keycloak/data/import
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /health/live
+            port: 8180
+          initialDelaySeconds: 120
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          httpGet:
+            path: /health/ready
+            port: 8180
+          initialDelaySeconds: 90
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: keycloak-config
+        configMap:
+          name: keycloak-realm-config
+          optional: true
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak
+  namespace: eflo
+  labels:
+    app: keycloak
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8180
+    targetPort: 8180
+    protocol: TCP
+    name: http
+  selector:
+    app: keycloak
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-lb
+  namespace: eflo
+  labels:
+    app: keycloak
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8180
+    targetPort: 8180
+    protocol: TCP
+    name: http
+  selector:
+    app: keycloak

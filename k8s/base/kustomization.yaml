@@ -1,0 +1,48 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: eflo
+
+resources:
+  - namespace.yaml
+  - configmap.yaml
+  - secrets.yaml
+  - postgres.yaml
+  - kafka.yaml
+  - minio.yaml
+  - keycloak.yaml
+  - eureka-server.yaml
+  - config-server.yaml
+  - api-gateways.yaml
+  - order-service.yaml
+  - business-services.yaml
+  - n8n.yaml
+  - workflow-admin.yaml
+
+commonLabels:
+  app.kubernetes.io/part-of: eflo-platform
+  app.kubernetes.io/managed-by: kustomize
+
+images:
+  - name: ghcr.io/eflo/eureka-server
+    newTag: latest
+  - name: ghcr.io/eflo/config-server
+    newTag: latest
+  - name: ghcr.io/eflo/internal-api-gateway
+    newTag: latest
+  - name: ghcr.io/eflo/external-api-gateway
+    newTag: latest
+  - name: ghcr.io/eflo/order-service
+    newTag: latest
+  - name: ghcr.io/eflo/workflow-service
+    newTag: latest
+  - name: ghcr.io/eflo/commission-service
+    newTag: latest
+  - name: ghcr.io/eflo/document-service
+    newTag: latest
+  - name: ghcr.io/eflo/user-service
+    newTag: latest
+  - name: ghcr.io/eflo/document-generation-service
+    newTag: latest
+  - name: ghcr.io/eflo/workflow-admin
+    newTag: latest

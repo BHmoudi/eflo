@@ -1,0 +1,189 @@
+---
+# Internal API Gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-api-gateway
+  namespace: eflo
+  labels:
+    app: internal-api-gateway
+    tier: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: internal-api-gateway
+  template:
+    metadata:
+      labels:
+        app: internal-api-gateway
+        tier: gateway
+    spec:
+      initContainers:
+      - name: wait-for-eureka
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://eureka-server:8761/actuator/health; do echo waiting for eureka; sleep 5; done;']
+      - name: wait-for-config
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://config-server:8888/actuator/health; do echo waiting for config-server; sleep 5; done;']
+      - name: wait-for-keycloak
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://keycloak:8180/health/ready; do echo waiting for keycloak; sleep 5; done;']
+      containers:
+      - name: internal-api-gateway
+        image: ghcr.io/eflo/internal-api-gateway:latest
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        - name: SPRING_CLOUD_CONFIG_URI
+          value: "http://config-server:8888"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+          value: "http://keycloak:8180/realms/eflo/protocol/openid-connect/certs"
+        - name: GATEWAY_AUTH_ENFORCE
+          value: "false"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8080
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-api-gateway
+  namespace: eflo
+  labels:
+    app: internal-api-gateway
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: internal-api-gateway
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-api-gateway-lb
+  namespace: eflo
+  labels:
+    app: internal-api-gateway
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8080
+    targetPort: 8080
+    protocol: TCP
+    name: http
+  selector:
+    app: internal-api-gateway
+---
+# External API Gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: external-api-gateway
+  namespace: eflo
+  labels:
+    app: external-api-gateway
+    tier: gateway
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: external-api-gateway
+  template:
+    metadata:
+      labels:
+        app: external-api-gateway
+        tier: gateway
+    spec:
+      initContainers:
+      - name: wait-for-eureka
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://eureka-server:8761/actuator/health; do echo waiting for eureka; sleep 5; done;']
+      - name: wait-for-config
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://config-server:8888/actuator/health; do echo waiting for config-server; sleep 5; done;']
+      - name: wait-for-keycloak
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://keycloak:8180/health/ready; do echo waiting for keycloak; sleep 5; done;']
+      containers:
+      - name: external-api-gateway
+        image: ghcr.io/eflo/external-api-gateway:latest
+        ports:
+        - containerPort: 8079
+          name: http
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        - name: SPRING_CLOUD_CONFIG_URI
+          value: "http://config-server:8888"
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+          value: "http://keycloak:8180/realms/eflo/protocol/openid-connect/certs"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8079
+          initialDelaySeconds: 90
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8079
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: external-api-gateway
+  namespace: eflo
+  labels:
+    app: external-api-gateway
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 8081
+    targetPort: 8079
+    protocol: TCP
+    name: http
+  selector:
+    app: external-api-gateway

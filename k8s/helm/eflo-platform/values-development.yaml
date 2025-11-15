@@ -1,0 +1,110 @@
+# Development environment overrides
+
+global:
+  environment: development
+  namespace: eflo-dev
+  image:
+    tag: develop
+    pullPolicy: Always
+
+# Reduce resource requirements for development
+eureka:
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+configServer:
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+# Single replica for all services
+internalGateway:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+externalGateway:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+orderService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+workflowService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+commissionService:
+  replicaCount: 1
+
+documentService:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+userService:
+  replicaCount: 1
+
+documentGenerationService:
+  replicaCount: 1
+
+workflowAdmin:
+  replicaCount: 1
+  hpa:
+    enabled: false
+
+# Reduce storage for development
+postgresql:
+  primary:
+    persistence:
+      size: 5Gi
+  databases:
+    order:
+      storage: 5Gi
+    workflow:
+      storage: 5Gi
+    commission:
+      storage: 2Gi
+    document:
+      storage: 5Gi
+    user:
+      storage: 2Gi
+    keycloak:
+      storage: 2Gi
+    n8n:
+      storage: 2Gi
+    docgen:
+      storage: 2Gi
+
+kafka:
+  persistence:
+    size: 10Gi
+
+minio:
+  persistence:
+    size: 20Gi
+
+n8n:
+  persistence:
+    size: 5Gi
+
+# Enable monitoring in development
+monitoring:
+  enabled: true
+  prometheus:
+    enabled: true
+  grafana:
+    enabled: true

@@ -1,0 +1,222 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: n8n
+  namespace: eflo
+  labels:
+    app: n8n
+    tier: automation
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: n8n
+  template:
+    metadata:
+      labels:
+        app: n8n
+        tier: automation
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-n8n 5432; do sleep 2; done;']
+      - name: wait-for-kafka
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z kafka 9092; do sleep 2; done;']
+      - name: wait-for-minio
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://minio:9000/minio/health/ready; do sleep 5; done;']
+      containers:
+      - name: n8n
+        image: n8nio/n8n:latest
+        ports:
+        - containerPort: 5678
+          name: http
+        env:
+        # Database Configuration
+        - name: DB_TYPE
+          value: "postgresdb"
+        - name: DB_POSTGRESDB_HOST
+          value: "postgres-n8n"
+        - name: DB_POSTGRESDB_PORT
+          value: "5432"
+        - name: DB_POSTGRESDB_DATABASE
+          value: "n8n_db"
+        - name: DB_POSTGRESDB_USER
+          value: "n8n_user"
+        - name: DB_POSTGRESDB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: N8N_DB_PASSWORD
+        # n8n Configuration
+        - name: N8N_HOST
+          value: "n8n"
+        - name: N8N_PORT
+          value: "5678"
+        - name: N8N_PROTOCOL
+          value: "http"
+        - name: WEBHOOK_URL
+          value: "http://n8n:5678/"
+        # Authentication
+        - name: N8N_BASIC_AUTH_ACTIVE
+          value: "true"
+        - name: N8N_BASIC_AUTH_USER
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: N8N_BASIC_AUTH_USER
+        - name: N8N_BASIC_AUTH_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: N8N_BASIC_AUTH_PASSWORD
+        # Timezone
+        - name: GENERIC_TIMEZONE
+          value: "Europe/Paris"
+        - name: TZ
+          value: "Europe/Paris"
+        # Integration URLs
+        - name: N8N_WORKFLOW_SERVICE_URL
+          value: "http://workflow-service:8091"
+        - name: N8N_DOCUMENT_SERVICE_URL
+          value: "http://document-service:8083"
+        - name: N8N_USER_SERVICE_URL
+          value: "http://user-service:8084"
+        - name: N8N_ORDER_SERVICE_URL
+          value: "http://order-service:8089"
+        # AI Configuration
+        - name: N8N_AI_ENABLED
+          value: "true"
+        - name: N8N_AI_PROVIDER
+          value: "openai"
+        - name: N8N_AI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: N8N_AI_API_KEY
+              optional: true
+        - name: N8N_AI_MODEL
+          value: "gpt-4"
+        # WhatsApp/Twilio
+        - name: N8N_WHATSAPP_ENABLED
+          value: "true"
+        - name: N8N_WHATSAPP_PROVIDER
+          value: "twilio"
+        - name: N8N_TWILIO_ACCOUNT_SID
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: TWILIO_ACCOUNT_SID
+              optional: true
+        - name: N8N_TWILIO_AUTH_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: TWILIO_AUTH_TOKEN
+              optional: true
+        # MinIO
+        - name: N8N_MINIO_ENDPOINT
+          value: "http://minio:9000"
+        - name: N8N_MINIO_ACCESS_KEY
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: MINIO_ROOT_USER
+        - name: N8N_MINIO_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: MINIO_ROOT_PASSWORD
+        # Kafka
+        - name: N8N_KAFKA_BROKERS
+          value: "kafka:9092"
+        # Execution Configuration
+        - name: EXECUTIONS_PROCESS
+          value: "main"
+        - name: EXECUTIONS_MODE
+          value: "regular"
+        - name: EXECUTIONS_TIMEOUT
+          value: "3600"
+        - name: EXECUTIONS_DATA_SAVE_ON_ERROR
+          value: "all"
+        - name: EXECUTIONS_DATA_SAVE_ON_SUCCESS
+          value: "all"
+        # Logging
+        - name: N8N_LOG_LEVEL
+          value: "info"
+        - name: N8N_LOG_OUTPUT
+          value: "console"
+        volumeMounts:
+        - name: n8n-data
+          mountPath: /home/node/.n8n
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 5678
+          initialDelaySeconds: 60
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /healthz
+            port: 5678
+          initialDelaySeconds: 30
+          periodSeconds: 10
+      volumes:
+      - name: n8n-data
+        persistentVolumeClaim:
+          claimName: n8n-data-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: n8n-data-pvc
+  namespace: eflo
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n
+  namespace: eflo
+  labels:
+    app: n8n
+spec:
+  type: ClusterIP
+  ports:
+  - port: 5678
+    targetPort: 5678
+    protocol: TCP
+    name: http
+  selector:
+    app: n8n
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: n8n-lb
+  namespace: eflo
+  labels:
+    app: n8n
+spec:
+  type: LoadBalancer
+  ports:
+  - port: 5678
+    targetPort: 5678
+    protocol: TCP
+    name: http
+  selector:
+    app: n8n

@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: eflo-config
+  namespace: eflo
+data:
+  # Eureka Configuration
+  EUREKA_SERVER_URL: "http://eureka-server:8761/eureka/"
+  EUREKA_USERNAME: "eureka"
+
+  # Kafka Configuration
+  KAFKA_BOOTSTRAP_SERVERS: "kafka:9092"
+  KAFKA_AUTO_CREATE_TOPICS: "true"
+
+  # Keycloak Configuration
+  KEYCLOAK_AUTH_SERVER_URL: "http://keycloak:8180"
+  KEYCLOAK_REALM: "eflo"
+  KEYCLOAK_ISSUER_URI: "http://keycloak:8180/realms/eflo"
+
+  # MinIO Configuration
+  MINIO_ENDPOINT: "http://minio:9000"
+  MINIO_ROOT_USER: "minioadmin"
+
+  # n8n Configuration
+  N8N_HOST: "n8n"
+  N8N_PORT: "5678"
+  N8N_PROTOCOL: "http"
+
+  # Database Configurations
+  POSTGRES_ORDER_URL: "jdbc:postgresql://postgres-order:5432/order_db"
+  POSTGRES_WORKFLOW_URL: "jdbc:postgresql://postgres-workflow:5432/workflow_db"
+  POSTGRES_COMMISSION_URL: "jdbc:postgresql://postgres-commission:5432/commission_db"
+  POSTGRES_DOCUMENT_URL: "jdbc:postgresql://postgres-document:5432/document_db"
+  POSTGRES_USER_URL: "jdbc:postgresql://postgres-user:5432/user_db"
+  POSTGRES_KEYCLOAK_URL: "jdbc:postgresql://postgres-keycloak:5432/keycloak_db"
+  POSTGRES_N8N_URL: "jdbc:postgresql://postgres-n8n:5432/n8n_db"
+
+  # Service URLs
+  ORDER_SERVICE_URL: "http://order-service:8089"
+  WORKFLOW_SERVICE_URL: "http://workflow-service:8091"
+  COMMISSION_SERVICE_URL: "http://commission-service:8082"
+  DOCUMENT_SERVICE_URL: "http://document-service:8083"
+  USER_SERVICE_URL: "http://user-service:8084"
+  INTERNAL_GATEWAY_URL: "http://internal-api-gateway:8080"
+  EXTERNAL_GATEWAY_URL: "http://external-api-gateway:8081"
+
+  # Spring Profiles
+  SPRING_PROFILES_ACTIVE: "kubernetes"
+
+  # Timezone
+  TZ: "Europe/Paris"
+  GENERIC_TIMEZONE: "Europe/Paris"
