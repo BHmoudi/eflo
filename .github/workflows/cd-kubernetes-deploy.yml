@@ -1,0 +1,170 @@
+name: CD - Kubernetes Deploy
+
+on:
+  workflow_run:
+    workflows: ["Docker Build & Push"]
+    types:
+      - completed
+    branches:
+      - main
+      - develop
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        type: choice
+        options:
+          - development
+          - staging
+          - production
+      namespace:
+        description: 'Kubernetes namespace'
+        required: true
+        default: 'eflo-dev'
+
+env:
+  HELM_VERSION: 'v3.13.0'
+
+jobs:
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    environment:
+      name: ${{ github.event.inputs.environment || 'development' }}
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+        with:
+          version: 'latest'
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4
+        with:
+          version: ${{ env.HELM_VERSION }}
+
+      - name: Configure Kubernetes context
+        run: |
+          mkdir -p $HOME/.kube
+          echo "${{ secrets.KUBECONFIG }}" | base64 -d > $HOME/.kube/config
+          kubectl config use-context ${{ secrets.K8S_CONTEXT || 'default' }}
+
+      - name: Create namespace if not exists
+        run: |
+          kubectl create namespace ${{ github.event.inputs.namespace || 'eflo-dev' }} --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create image pull secret
+        run: |
+          kubectl create secret docker-registry ghcr-secret \
+            --docker-server=ghcr.io \
+            --docker-username=${{ github.actor }} \
+            --docker-password=${{ secrets.GITHUB_TOKEN }} \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Create secrets from environment variables
+        run: |
+          kubectl create secret generic eflo-secrets \
+            --from-literal=keycloak-db-password='${{ secrets.KEYCLOAK_DB_PASSWORD }}' \
+            --from-literal=order-db-password='${{ secrets.ORDER_DB_PASSWORD }}' \
+            --from-literal=workflow-db-password='${{ secrets.WORKFLOW_DB_PASSWORD }}' \
+            --from-literal=commission-db-password='${{ secrets.COMMISSION_DB_PASSWORD }}' \
+            --from-literal=document-db-password='${{ secrets.DOCUMENT_DB_PASSWORD }}' \
+            --from-literal=user-db-password='${{ secrets.USER_DB_PASSWORD }}' \
+            --from-literal=n8n-db-password='${{ secrets.N8N_DB_PASSWORD }}' \
+            --from-literal=keycloak-admin-password='${{ secrets.KEYCLOAK_ADMIN_PASSWORD }}' \
+            --from-literal=minio-root-password='${{ secrets.MINIO_ROOT_PASSWORD }}' \
+            --from-literal=n8n-basic-auth-password='${{ secrets.N8N_BASIC_AUTH_PASSWORD }}' \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --dry-run=client -o yaml | kubectl apply -f -
+
+      - name: Add Helm repositories
+        run: |
+          helm repo add bitnami https://charts.bitnami.com/bitnami
+          helm repo add codecentric https://codecentric.github.io/helm-charts
+          helm repo add confluentinc https://confluentinc.github.io/cp-helm-charts/
+          helm repo update
+
+      - name: Deploy infrastructure services
+        run: |
+          helm upgrade --install eflo-infra ./k8s/helm/eflo-infrastructure \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --values=./k8s/helm/eflo-infrastructure/values-${{ github.event.inputs.environment || 'development' }}.yaml \
+            --wait \
+            --timeout=10m
+
+      - name: Wait for infrastructure to be ready
+        run: |
+          kubectl wait --for=condition=ready pod -l app=eureka-server \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --timeout=300s
+          kubectl wait --for=condition=ready pod -l app=kafka \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --timeout=300s
+
+      - name: Deploy application services
+        run: |
+          helm upgrade --install eflo-services ./k8s/helm/eflo-services \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --values=./k8s/helm/eflo-services/values-${{ github.event.inputs.environment || 'development' }}.yaml \
+            --set global.image.tag=${{ github.sha }} \
+            --wait \
+            --timeout=15m
+
+      - name: Run smoke tests
+        run: |
+          kubectl run smoke-test \
+            --image=curlimages/curl:latest \
+            --restart=Never \
+            --namespace=${{ github.event.inputs.namespace || 'eflo-dev' }} \
+            --rm -i --tty \
+            -- sh -c "
+              echo 'Testing Eureka Server...'
+              curl -f http://eureka-server:8761/actuator/health || exit 1
+              echo 'Testing Internal API Gateway...'
+              curl -f http://internal-api-gateway:8080/actuator/health || exit 1
+              echo 'All smoke tests passed!'
+            "
+
+      - name: Get deployment status
+        if: always()
+        run: |
+          echo "=== Deployment Status ==="
+          kubectl get deployments -n ${{ github.event.inputs.namespace || 'eflo-dev' }}
+          echo ""
+          echo "=== Pod Status ==="
+          kubectl get pods -n ${{ github.event.inputs.namespace || 'eflo-dev' }}
+          echo ""
+          echo "=== Services ==="
+          kubectl get svc -n ${{ github.event.inputs.namespace || 'eflo-dev' }}
+
+      - name: Rollback on failure
+        if: failure()
+        run: |
+          echo "Deployment failed, rolling back..."
+          helm rollback eflo-services -n ${{ github.event.inputs.namespace || 'eflo-dev' }}
+          helm rollback eflo-infra -n ${{ github.event.inputs.namespace || 'eflo-dev' }}
+
+  post-deployment:
+    name: Post-Deployment Tasks
+    runs-on: ubuntu-latest
+    needs: deploy
+    if: success()
+
+    steps:
+      - name: Notify deployment success
+        run: |
+          echo "✅ Deployment to ${{ github.event.inputs.environment || 'development' }} completed successfully"
+
+      - name: Create deployment tag
+        if: github.event.inputs.environment == 'production'
+        run: |
+          git tag -a "deploy-prod-$(date +%Y%m%d-%H%M%S)" -m "Production deployment"
+          git push origin --tags

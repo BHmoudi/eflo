@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: order-service
+  namespace: eflo
+  labels:
+    app: order-service
+    tier: business
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: order-service
+  template:
+    metadata:
+      labels:
+        app: order-service
+        tier: business
+    spec:
+      initContainers:
+      - name: wait-for-postgres
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z postgres-order 5432; do echo waiting for postgres-order; sleep 2; done;']
+      - name: wait-for-kafka
+        image: busybox:latest
+        command: ['sh', '-c', 'until nc -z kafka 9092; do echo waiting for kafka; sleep 2; done;']
+      - name: wait-for-eureka
+        image: curlimages/curl:latest
+        command: ['sh', '-c', 'until curl -f http://eureka-server:8761/actuator/health; do echo waiting for eureka; sleep 5; done;']
+      containers:
+      - name: order-service
+        image: ghcr.io/eflo/order-service:latest
+        ports:
+        - containerPort: 8089
+          name: http
+        env:
+        - name: SPRING_PROFILES_ACTIVE
+          value: "kubernetes"
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: POSTGRES_ORDER_URL
+        - name: SPRING_DATASOURCE_USERNAME
+          value: "order_user"
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: eflo-secrets
+              key: ORDER_DB_PASSWORD
+        - name: SPRING_KAFKA_BOOTSTRAP_SERVERS
+          value: "kafka:9092"
+        - name: EUREKA_CLIENT_SERVICEURL_DEFAULTZONE
+          valueFrom:
+            configMapKeyRef:
+              name: eflo-config
+              key: EUREKA_SERVER_URL
+        - name: SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI
+          value: "http://keycloak:8180/realms/eflo/protocol/openid-connect/certs"
+        resources:
+          requests:
+            memory: "512Mi"
+            cpu: "250m"
+          limits:
+            memory: "1Gi"
+            cpu: "1000m"
+        livenessProbe:
+          httpGet:
+            path: /actuator/health/liveness
+            port: 8089
+          initialDelaySeconds: 120
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /actuator/health/readiness
+            port: 8089
+          initialDelaySeconds: 90
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: order-service
+  namespace: eflo
+  labels:
+    app: order-service
+spec:
+  type: ClusterIP
+  ports:
+  - port: 8089
+    targetPort: 8089
+    protocol: TCP
+    name: http
+  selector:
+    app: order-service
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: order-service-hpa
+  namespace: eflo
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: order-service
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
