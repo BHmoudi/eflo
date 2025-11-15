@@ -20,7 +20,7 @@ spring:
       auto-offset-reset: earliest
       enable-auto-commit: false
       properties:
-        spring.json.trusted.packages: "*"
+        spring.json.trusted.packages: "com.eflo.*"
 
   # Security & OAuth2 for Docker
   security:

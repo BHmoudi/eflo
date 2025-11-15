@@ -76,11 +76,11 @@ eflo:
     # Integration configuration
     integration:
       order-service:
-        url: http://order-service:8083
+        url: http://order-service:8089
       document-service:
-        url: http://document-service:8087
+        url: http://document-service:8083
       user-service:
-        url: http://user-service:8082
+        url: http://user-service:8084
 
 logging:
   level:
